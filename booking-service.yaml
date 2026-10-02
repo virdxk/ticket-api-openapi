@@ -1,0 +1,92 @@
+openapi: 3.0.3
+info:
+  title: Booking Service API
+  version: 1.0.0
+  description: |
+    Второй веб-сервис, расположенный на URL `/booking`. Реализует операции
+    продажи и отмены бронирований, вызывая API первого сервиса (Ticket Service).
+    Модели Ticket и Problem описаны в спецификации первого сервиса
+    `ticket-service.yaml`.
+security: []
+servers:
+  - url: http://localhost:8081
+    description: Локальное окружение
+tags:
+  - name: Booking
+    description: Операции второго веб-сервиса, вызывающего API сервиса билетов
+
+paths:
+  /booking/sell/vip/{ticketId}/{personId}:
+    post:
+      tags: [Booking]
+      operationId: sellVipTicket
+      summary: Продать VIP-копию билета
+      description: |
+        Второй сервис получает исходный билет через API первого сервиса, создаёт
+        его копию с новым автоматически сгенерированным `id` и `creationDate`,
+        устанавливает `type=VIP`, удваивает `price` и добавляет `personId` в
+        `bookedPersonIds` созданной копии. Исходный билет не изменяется.
+        Если цена исходного билета равна `null`, операция невозможна.
+      parameters:
+        - {$ref: './ticket-service.yaml#/components/parameters/TicketId'}
+        - {$ref: '#/components/parameters/PersonId'}
+      responses:
+        '201':
+          description: VIP-копия создана и забронирована
+          headers:
+            Location:
+              description: URL созданного билета в первом сервисе
+              schema: {type: string, format: uri}
+          content:
+            application/json:
+              schema: {$ref: './ticket-service.yaml#/components/schemas/Ticket'}
+        '400': {$ref: './ticket-service.yaml#/components/responses/BadRequest'}
+        '404':
+          description: Исходный билет не найден
+          content:
+            application/json:
+              schema: {$ref: './ticket-service.yaml#/components/schemas/Problem'}
+        '409':
+          description: VIP-копию нельзя создать, например цена исходного билета равна null
+          content:
+            application/json:
+              schema: {$ref: './ticket-service.yaml#/components/schemas/Problem'}
+        '422': {$ref: './ticket-service.yaml#/components/responses/ValidationError'}
+
+  /booking/person/{personId}/cancel:
+    delete:
+      tags: [Booking]
+      operationId: cancelPersonBookings
+      summary: Отменить все бронирования человека
+      description: |
+        Второй сервис удаляет `personId` из `bookedPersonIds` каждого билета,
+        используя API первого сервиса. Повторный вызов идемпотентен.
+      parameters:
+        - {$ref: '#/components/parameters/PersonId'}
+      responses:
+        '200':
+          description: Операция завершена, в том числе если бронирований не было
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CancellationResult'}
+        '400': {$ref: './ticket-service.yaml#/components/responses/BadRequest'}
+
+components:
+  parameters:
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      description: Положительный идентификатор человека
+      schema: {type: integer, format: int64, minimum: 1}
+  schemas:
+    CancellationResult:
+      type: object
+      additionalProperties: false
+      required: [personId, affectedTickets]
+      properties:
+        personId: {type: integer, format: int64, minimum: 1}
+        affectedTickets:
+          type: integer
+          minimum: 0
+          description: Число билетов, из которых удалён personId

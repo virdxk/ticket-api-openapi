@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ticket Collection and Booking API</title>
+  <title>Ticket Service и Booking Service API</title>
   <link rel="stylesheet" href="./swagger-ui/swagger-ui.css">
   <style>
     html { box-sizing: border-box; overflow-y: scroll; }
@@ -18,7 +18,11 @@
   <script>
     window.onload = function () {
       window.ui = SwaggerUIBundle({
-        url: './openapi.yaml',
+        urls: [
+          { url: './ticket-service.yaml', name: 'Ticket Service' },
+          { url: './booking-service.yaml', name: 'Booking Service' }
+        ],
+        'urls.primaryName': 'Ticket Service',
         dom_id: '#swagger-ui',
         deepLinking: true,
         displayRequestDuration: true,
