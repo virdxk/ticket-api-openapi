@@ -182,20 +182,24 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Problem'}
 
-  /tickets/actions/comment-starts-with/{prefix}:
+  /tickets/actions/comment-starts-with:
     get:
       tags: [Ticket operations]
       operationId: findTicketsByCommentPrefix
       summary: Найти билеты по началу комментария
       description: |
-        Возвращает все билеты, чей `comment` начинается с заданной подстроки.
-        Сравнение регистрозависимое; пустая подстрока не допускается.
+        Возвращает все билеты, чей `comment` начинается с подстроки `prefix`.
+        Сравнение регистрозависимое. Пустая подстрока допускается: с неё
+        начинается любой комментарий, поэтому возвращаются все билеты.
+        Отсутствие параметра `prefix` даёт `400`.
       parameters:
         - name: prefix
-          in: path
+          in: query
           required: true
-          description: Непустая начальная подстрока комментария (в URL-кодировке)
-          schema: {type: string, minLength: 1, maxLength: 681}
+          allowEmptyValue: true
+          description: Начальная подстрока комментария, может быть пустой
+          schema: {type: string, maxLength: 681}
+          example: Первый
       responses:
         '200':
           description: Массив найденных билетов; может быть пустым
