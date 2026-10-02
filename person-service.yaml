@@ -243,7 +243,7 @@ components:
           type: string
           format: date-time
           description: Время возникновения ошибки
-        errors:
+        details:
           type: array
           description: |
             Ошибки валидации JSON запроса, по одной на нарушенное ограничение.
@@ -286,7 +286,7 @@ components:
           example:
             error_message: JSON запроса нарушает ограничения Person
             error_time: '2026-10-02T18:30:00Z'
-            errors:
+            details:
               - {field: firstName, message: не должно быть пустым}
               - {field: birthday, message: дата рождения не может быть в будущем}
     InternalError:
