@@ -361,12 +361,12 @@ components:
     Error:
       type: object
       additionalProperties: false
-      required: [details, timestamp]
+      required: [error_message, error_time]
       properties:
-        details:
+        error_message:
           type: string
           description: Описание ошибки
-        timestamp:
+        error_time:
           type: string
           format: date-time
           description: Время возникновения ошибки
@@ -394,24 +394,24 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: 'Параметр filter: неизвестное поле "cost"'
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: 'Параметр filter: неизвестное поле "cost"'
+            error_time: '2026-10-02T18:30:00Z'
     NotFound:
       description: Билет не найден
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: Билет с id=42 не найден
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: Билет с id=42 не найден
+            error_time: '2026-10-02T18:30:00Z'
     ValidationError:
       description: JSON корректен синтаксически, но нарушает ограничения целостности
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: JSON запроса нарушает ограничения Ticket
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: JSON запроса нарушает ограничения Ticket
+            error_time: '2026-10-02T18:30:00Z'
             errors:
               - {field: price, message: должно быть больше 0}
               - {field: coordinates.y, message: должно быть не больше 747}
@@ -421,5 +421,5 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: Внутренняя ошибка сервера
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: Внутренняя ошибка сервера
+            error_time: '2026-10-02T18:30:00Z'

@@ -163,8 +163,8 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
               example:
-                details: У билета с id=42 не задана цена
-                timestamp: '2026-10-02T18:30:00Z'
+                error_message: У билета с id=42 не задана цена
+                error_time: '2026-10-02T18:30:00Z'
         '500': {$ref: '#/components/responses/InternalError'}
         '503': {$ref: '#/components/responses/ServiceUnavailable'}
 
@@ -326,12 +326,12 @@ components:
     Error:
       type: object
       additionalProperties: false
-      required: [details, timestamp]
+      required: [error_message, error_time]
       properties:
-        details:
+        error_message:
           type: string
           description: Описание ошибки
-        timestamp:
+        error_time:
           type: string
           format: date-time
           description: Время возникновения ошибки
@@ -359,32 +359,32 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: 'ticketId: должно быть больше 0'
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: 'ticketId: должно быть больше 0'
+            error_time: '2026-10-02T18:30:00Z'
     BookingNotFound:
       description: Бронирование не найдено
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: Бронирование с id=15 не найдено
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: Бронирование с id=15 не найдено
+            error_time: '2026-10-02T18:30:00Z'
     TicketOrPersonNotFound:
       description: Билет или человек не найден
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: Билет с id=42 не найден
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: Билет с id=42 не найден
+            error_time: '2026-10-02T18:30:00Z'
     ValidationError:
       description: JSON корректен синтаксически, но нарушает ограничения целостности
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: JSON запроса нарушает ограничения Booking
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: JSON запроса нарушает ограничения Booking
+            error_time: '2026-10-02T18:30:00Z'
             errors:
               - {field: ticketId, message: должно быть больше 0}
     InternalError:
@@ -393,13 +393,13 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: Внутренняя ошибка сервера
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: Внутренняя ошибка сервера
+            error_time: '2026-10-02T18:30:00Z'
     ServiceUnavailable:
       description: Ticket Service или Person Service недоступен
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: Ticket Service недоступен
-            timestamp: '2026-10-02T18:30:00Z'
+            error_message: Ticket Service недоступен
+            error_time: '2026-10-02T18:30:00Z'
