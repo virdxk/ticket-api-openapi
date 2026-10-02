@@ -3,7 +3,9 @@ info:
   title: Booking Service API
   version: 1.0.0
   description: |
-    Второй веб-сервис, расположенный на URL `/booking`. Реализует операции
+    Второй веб-сервис, расположенный на URL `/booking`. 
+    
+    Реализует операции
     продажи и отмены бронирований, вызывая API первого сервиса (Ticket Service).
     Модели Ticket и Problem описаны в спецификации первого сервиса
     `ticket-service.yaml`.
