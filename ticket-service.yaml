@@ -57,7 +57,6 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Ticket'}
         '400': {$ref: '#/components/responses/BadRequest'}
-        '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/ValidationError'}
     get:
       tags: [Tickets]
@@ -133,7 +132,6 @@ paths:
               schema: {$ref: '#/components/schemas/Ticket'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {$ref: '#/components/responses/Conflict'}
         '422': {$ref: '#/components/responses/ValidationError'}
     delete:
       tags: [Tickets]
@@ -468,11 +466,6 @@ components:
           schema: {$ref: '#/components/schemas/Problem'}
     NotFound:
       description: Билет не найден
-      content:
-        application/problem+json:
-          schema: {$ref: '#/components/schemas/Problem'}
-    Conflict:
-      description: Конфликт с текущим состоянием данных или ограничением уникальности
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
