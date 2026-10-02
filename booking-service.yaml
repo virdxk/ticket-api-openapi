@@ -7,17 +7,129 @@ info:
 
     Хранит бронирования: связь человека из Person Service с билетом из
     Ticket Service. Ticket Service и Person Service друг о друге не знают,
-    связь между ними существует только здесь. Продажа VIP-копии вызывает API
-    этих сервисов; если они недоступны, возвращается `503`.
+    связь между ними существует только здесь. Операции, которые проверяют
+    билет или человека через API этих сервисов, возвращают `503`, если
+    сервис недоступен.
 security: []
 servers:
   - url: http://localhost:8081
     description: Локальное окружение
 tags:
+  - name: Bookings
+    description: Базовые CRUD-операции над коллекцией Booking
   - name: Booking
     description: Операции продажи и отмены бронирований
 
 paths:
+  /booking/bookings:
+    post:
+      tags: [Bookings]
+      operationId: createBooking
+      summary: Создать бронирование
+      description: |
+        Бронирует существующий билет на существующего человека. Наличие билета
+        и человека проверяется через Ticket Service и Person Service.
+        `id` и `createdAt` генерируются сервером.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BookingCreate'}
+            example:
+              ticketId: 42
+              personId: 7
+      responses:
+        '201':
+          description: Бронирование создано
+          headers:
+            Location:
+              description: URL созданного бронирования
+              schema: {type: string, format: uri}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/TicketOrPersonNotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/InternalError'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+    get:
+      tags: [Bookings]
+      operationId: listBookings
+      summary: Получить страницу бронирований
+      description: |
+        Возвращает страницу бронирований с фильтрацией и сортировкой по любой
+        комбинации полей Booking. Фильтры `filter` и сортировки `sort`
+        повторяются; фильтры объединяются через `AND`, порядок `sort` задаёт
+        приоритет сортировки.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Sort'}
+        - {$ref: '#/components/parameters/Filter'}
+      responses:
+        '200':
+          description: Страница бронирований
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BookingPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalError'}
+
+  /booking/bookings/{bookingId}:
+    parameters:
+      - {$ref: '#/components/parameters/BookingId'}
+    get:
+      tags: [Bookings]
+      operationId: getBooking
+      summary: Получить бронирование по идентификатору
+      description: Возвращает одно бронирование по его уникальному идентификатору.
+      responses:
+        '200':
+          description: Бронирование найдено
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/BookingNotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    patch:
+      tags: [Bookings]
+      operationId: updateBooking
+      summary: Обновить бронирование
+      description: |
+        Частично обновляет бронирование: меняются только переданные поля.
+        Новые `ticketId` и `personId` проверяются через Ticket Service и
+        Person Service. `id` и `createdAt` не изменяются.
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: {$ref: '#/components/schemas/BookingPatch'}
+            example:
+              personId: 8
+      responses:
+        '200':
+          description: Бронирование обновлено
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Booking'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/BookingNotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/InternalError'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+    delete:
+      tags: [Bookings]
+      operationId: deleteBooking
+      summary: Удалить бронирование
+      description: Удаляет бронирование с указанным идентификатором. Билет и человек не изменяются.
+      responses:
+        '204': {description: 'Бронирование удалено, тело ответа отсутствует'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/BookingNotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+
   /booking/sell/vip/{ticketId}/{personId}:
     post:
       tags: [Booking]
@@ -44,14 +156,7 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Booking'}
         '400': {$ref: '#/components/responses/BadRequest'}
-        '404':
-          description: Исходный билет или человек не найден
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/Error'}
-              example:
-                details: Билет с id=42 не найден
-                timestamp: '2026-10-02T18:30:00Z'
+        '404': {$ref: '#/components/responses/TicketOrPersonNotFound'}
         '409':
           description: Цена исходного билета равна null, VIP-копию создать нельзя
           content:
@@ -85,6 +190,12 @@ paths:
 
 components:
   parameters:
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      description: Уникальный идентификатор бронирования
+      schema: {type: integer, format: int64, minimum: 1}
     TicketId:
       name: ticketId
       in: path
@@ -97,6 +208,52 @@ components:
       required: true
       description: Идентификатор человека в Person Service
       schema: {type: integer, format: int64, minimum: 1}
+    Page:
+      name: page
+      in: query
+      description: Номер страницы, начиная с 1
+      schema: {type: integer, minimum: 1, default: 1}
+    PageSize:
+      name: size
+      in: query
+      description: Число элементов на странице
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    Sort:
+      name: sort
+      in: query
+      description: |
+        Повторяемый параметр `<поле>,<направление>`, например
+        `sort=createdAt,desc`. Поле: `id`, `ticketId`, `personId` или
+        `createdAt`; направление: `asc`/`desc`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^(id|ticketId|personId|createdAt),(asc|desc)$'
+      example: ['createdAt,desc']
+    Filter:
+      name: filter
+      in: query
+      description: |
+        Повторяемый фильтр `<поле><оператор><значение>`. Несколько фильтров
+        объединяются через `AND`.
+
+        Операторы: `=`, `!=`, `>`, `>=`, `<`, `<=`, `~` (строковое
+        представление поля содержит подстроку).
+
+        Поля: `id`, `ticketId`, `personId`, `createdAt`.
+
+        Примеры: `personId=7`, `createdAt>=2026-10-01T00:00:00`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^(id|ticketId|personId|createdAt)(!=|>=|<=|=|>|<|~).*$'
+      example: ['personId=7']
 
   schemas:
     Booking:
@@ -114,7 +271,7 @@ components:
           type: integer
           format: int64
           minimum: 1
-          description: Идентификатор созданной VIP-копии в Ticket Service
+          description: Идентификатор забронированного билета в Ticket Service
         personId:
           type: integer
           format: int64
@@ -125,6 +282,33 @@ components:
           format: date-time
           readOnly: true
           description: Время создания бронирования
+    BookingCreate:
+      type: object
+      additionalProperties: false
+      required: [ticketId, personId]
+      properties:
+        ticketId: {type: integer, format: int64, minimum: 1}
+        personId: {type: integer, format: int64, minimum: 1}
+    BookingPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Частичное обновление (JSON Merge Patch); передаются только изменяемые поля
+      properties:
+        ticketId: {type: integer, format: int64, minimum: 1}
+        personId: {type: integer, format: int64, minimum: 1}
+    BookingPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Booking'}
+        page: {type: integer, minimum: 1}
+        size: {type: integer, minimum: 1}
+        totalElements: {type: integer, format: int64, minimum: 0}
+        totalPages: {type: integer, minimum: 0}
     CancellationResult:
       type: object
       additionalProperties: false
@@ -150,7 +334,31 @@ components:
 
   responses:
     BadRequest:
-      description: Некорректный URL-параметр
+      description: Некорректный URL-параметр или синтаксически неверный JSON
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: 'ticketId: должно быть больше 0'
+            timestamp: '2026-10-02T18:30:00Z'
+    BookingNotFound:
+      description: Бронирование не найдено
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: Бронирование с id=15 не найдено
+            timestamp: '2026-10-02T18:30:00Z'
+    TicketOrPersonNotFound:
+      description: Билет или человек не найден
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: Билет с id=42 не найден
+            timestamp: '2026-10-02T18:30:00Z'
+    ValidationError:
+      description: JSON корректен синтаксически, но нарушает ограничения целостности
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
