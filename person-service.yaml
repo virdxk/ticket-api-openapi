@@ -270,6 +270,7 @@ components:
           example:
             error_message: 'Параметр filter: неизвестное поле "age"'
             error_time: '2026-10-02T18:30:00Z'
+            details: []
     NotFound:
       description: Человек не найден
       content:
@@ -278,6 +279,7 @@ components:
           example:
             error_message: Человек с id=7 не найден
             error_time: '2026-10-02T18:30:00Z'
+            details: []
     ValidationError:
       description: JSON корректен синтаксически, но нарушает ограничения целостности
       content:
@@ -297,3 +299,4 @@ components:
           example:
             error_message: Внутренняя ошибка сервера
             error_time: '2026-10-02T18:30:00Z'
+            details: []

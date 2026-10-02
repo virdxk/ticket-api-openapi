@@ -165,6 +165,7 @@ paths:
               example:
                 error_message: У билета с id=42 не задана цена
                 error_time: '2026-10-02T18:30:00Z'
+                details: []
         '500': {$ref: '#/components/responses/InternalError'}
         '503': {$ref: '#/components/responses/ServiceUnavailable'}
 
@@ -362,6 +363,7 @@ components:
           example:
             error_message: 'ticketId: должно быть больше 0'
             error_time: '2026-10-02T18:30:00Z'
+            details: []
     BookingNotFound:
       description: Бронирование не найдено
       content:
@@ -370,6 +372,7 @@ components:
           example:
             error_message: Бронирование с id=15 не найдено
             error_time: '2026-10-02T18:30:00Z'
+            details: []
     TicketOrPersonNotFound:
       description: Билет или человек не найден
       content:
@@ -378,6 +381,7 @@ components:
           example:
             error_message: Билет с id=42 не найден
             error_time: '2026-10-02T18:30:00Z'
+            details: []
     ValidationError:
       description: JSON корректен синтаксически, но нарушает ограничения целостности
       content:
@@ -396,6 +400,7 @@ components:
           example:
             error_message: Внутренняя ошибка сервера
             error_time: '2026-10-02T18:30:00Z'
+            details: []
     ServiceUnavailable:
       description: Ticket Service или Person Service недоступен
       content:
@@ -404,3 +409,4 @@ components:
           example:
             error_message: Ticket Service недоступен
             error_time: '2026-10-02T18:30:00Z'
+            details: []
