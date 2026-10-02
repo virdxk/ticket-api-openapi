@@ -1,0 +1,570 @@
+openapi: 3.0.3
+info:
+  title: Ticket Collection and Booking API
+  version: 1.0.0
+  description: |
+    REST API двух веб-сервисов: управление коллекцией билетов и дополнительные
+    операции продажи/отмены бронирований.
+
+    Поля `id`, `creationDate` и `venue.id` формируются сервером. Все данные
+    передаются в JSON. Идентификаторы и параметры выборки передаются в URL.
+    Массив `bookedPersonIds` является служебным полем представления: он нужен
+    второму сервису, поскольку исходная Java-модель не содержит сведений о
+    бронированиях. Клиент первого сервиса не изменяет это поле напрямую.
+security: []
+servers:
+  - url: http://localhost:8080
+    description: Локальное окружение
+tags:
+  - name: Tickets
+    description: Базовые CRUD-операции над коллекцией Ticket
+  - name: Ticket operations
+    description: Специальные операции над коллекцией Ticket
+  - name: Booking
+    description: Операции второго веб-сервиса, вызывающего API сервиса билетов
+
+paths:
+  /tickets:
+    post:
+      tags: [Tickets]
+      operationId: createTicket
+      summary: Добавить билет
+      description: |
+        Создаёт новый элемент коллекции. `id`, `creationDate` и, при наличии
+        площадки, `venue.id` генерируются автоматически и не принимаются от клиента.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreate'
+            example:
+              name: Концертный билет
+              coordinates: {x: 12.5, y: 100}
+              price: 2500.0
+              comment: Первый ряд
+              type: USUAL
+              venue:
+                name: Главный стадион
+                capacity: 50000
+                type: STADIUM
+      responses:
+        '201':
+          description: Билет создан
+          headers:
+            Location:
+              description: URL созданного билета
+              schema: {type: string, format: uri}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ticket'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+    get:
+      tags: [Tickets]
+      operationId: listTickets
+      summary: Получить страницу билетов
+      description: |
+        Возвращает страницу коллекции. Все фильтры объединяются логическим `AND`.
+        Значения фильтров сравниваются на точное равенство. Параметр `sort` можно
+        повторять; порядок параметров задаёт приоритет сортировки. Доступны все
+        поля Ticket, включая вложенные поля. Для nullable-полей предусмотрены
+        отдельные признаки поиска `null`.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Sort'}
+        - {$ref: '#/components/parameters/FilterId'}
+        - {$ref: '#/components/parameters/FilterName'}
+        - {$ref: '#/components/parameters/FilterCoordinatesX'}
+        - {$ref: '#/components/parameters/FilterCoordinatesY'}
+        - {$ref: '#/components/parameters/FilterCreationDate'}
+        - {$ref: '#/components/parameters/FilterPrice'}
+        - {$ref: '#/components/parameters/FilterPriceNull'}
+        - {$ref: '#/components/parameters/FilterComment'}
+        - {$ref: '#/components/parameters/FilterType'}
+        - {$ref: '#/components/parameters/FilterTypeNull'}
+        - {$ref: '#/components/parameters/FilterVenueNull'}
+        - {$ref: '#/components/parameters/FilterVenueId'}
+        - {$ref: '#/components/parameters/FilterVenueName'}
+        - {$ref: '#/components/parameters/FilterVenueCapacity'}
+        - {$ref: '#/components/parameters/FilterVenueType'}
+      responses:
+        '200':
+          description: Страница билетов
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TicketPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+  /tickets/{ticketId}:
+    parameters:
+      - {$ref: '#/components/parameters/TicketId'}
+    get:
+      tags: [Tickets]
+      operationId: getTicket
+      summary: Получить билет по идентификатору
+      description: Возвращает один объект Ticket по его уникальному идентификатору.
+      responses:
+        '200':
+          description: Билет найден
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ticket'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [Tickets]
+      operationId: replaceTicket
+      summary: Обновить билет
+      description: |
+        Полностью заменяет изменяемые поля билета. Идентификатор и дата создания
+        сохраняются; `venue.id` сохраняется для существующей площадки либо
+        генерируется сервером при создании новой вложенной площадки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TicketUpdate'}
+      responses:
+        '200':
+          description: Билет обновлён
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ticket'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+    delete:
+      tags: [Tickets]
+      operationId: deleteTicket
+      summary: Удалить билет
+      description: Удаляет билет с указанным идентификатором.
+      responses:
+        '204': {description: 'Билет удалён, тело ответа отсутствует'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /tickets/actions/by-type/{type}:
+    delete:
+      tags: [Ticket operations]
+      operationId: deleteAnyTicketByType
+      summary: Удалить любой билет заданного типа
+      description: Находит и удаляет ровно один произвольный билет с указанным `type`.
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: Тип удаляемого билета
+          schema: {$ref: '#/components/schemas/TicketType'}
+      responses:
+        '204': {description: Один подходящий билет удалён}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404':
+          description: Билет указанного типа отсутствует
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /tickets/actions/min-creation-date:
+    get:
+      tags: [Ticket operations]
+      operationId: getTicketWithMinimumCreationDate
+      summary: Получить самый ранний билет
+      description: Возвращает один билет с минимальным значением `creationDate`.
+      responses:
+        '200':
+          description: Самый ранний билет
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ticket'}
+        '404':
+          description: Коллекция пуста
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /tickets/actions/comment-starts-with/{prefix}:
+    get:
+      tags: [Ticket operations]
+      operationId: findTicketsByCommentPrefix
+      summary: Найти билеты по началу комментария
+      description: |
+        Возвращает все билеты, чей `comment` начинается с заданной подстроки.
+        Сравнение регистрозависимое; пустая подстрока не допускается.
+      parameters:
+        - name: prefix
+          in: path
+          required: true
+          description: Непустая начальная подстрока комментария (в URL-кодировке)
+          schema: {type: string, minLength: 1, maxLength: 681}
+      responses:
+        '200':
+          description: Массив найденных билетов; может быть пустым
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Ticket'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+  /booking/sell/vip/{ticketId}/{personId}:
+    post:
+      tags: [Booking]
+      operationId: sellVipTicket
+      summary: Продать VIP-копию билета
+      description: |
+        Второй сервис получает исходный билет через API первого сервиса, создаёт
+        его копию с новым автоматически сгенерированным `id` и `creationDate`,
+        устанавливает `type=VIP`, удваивает `price` и добавляет `personId` в
+        `bookedPersonIds` созданной копии. Исходный билет не изменяется.
+        Если цена исходного билета равна `null`, операция невозможна.
+      parameters:
+        - {$ref: '#/components/parameters/TicketId'}
+        - {$ref: '#/components/parameters/PersonId'}
+      responses:
+        '201':
+          description: VIP-копия создана и забронирована
+          headers:
+            Location:
+              description: URL созданного билета в первом сервисе
+              schema: {type: string, format: uri}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ticket'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404':
+          description: Исходный билет не найден
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '409':
+          description: VIP-копию нельзя создать, например цена исходного билета равна null
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '502': {$ref: '#/components/responses/UpstreamError'}
+
+  /booking/person/{personId}/cancel:
+    delete:
+      tags: [Booking]
+      operationId: cancelPersonBookings
+      summary: Отменить все бронирования человека
+      description: |
+        Второй сервис удаляет `personId` из `bookedPersonIds` каждого билета,
+        используя API первого сервиса. Повторный вызов идемпотентен.
+      parameters:
+        - {$ref: '#/components/parameters/PersonId'}
+      responses:
+        '200':
+          description: Операция завершена, в том числе если бронирований не было
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CancellationResult'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '502': {$ref: '#/components/responses/UpstreamError'}
+
+components:
+  parameters:
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      description: Уникальный идентификатор билета
+      schema: {type: integer, format: int64, minimum: 1}
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      description: Положительный идентификатор человека
+      schema: {type: integer, format: int64, minimum: 1}
+    Page:
+      name: page
+      in: query
+      description: Номер страницы, начиная с 1
+      schema: {type: integer, minimum: 1, default: 1}
+    PageSize:
+      name: size
+      in: query
+      description: Число элементов на странице
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    Sort:
+      name: sort
+      in: query
+      description: |
+        Повторяемый параметр `<поле>,<направление>`, например
+        `sort=price,desc&sort=name,asc`. Поле: `id`, `name`, `coordinates.x`,
+        `coordinates.y`, `creationDate`, `price`, `comment`, `type`, `venue.id`,
+        `venue.name`, `venue.capacity` или `venue.type`; направление: `asc`/`desc`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^(id|name|coordinates\.x|coordinates\.y|creationDate|price|comment|type|venue\.id|venue\.name|venue\.capacity|venue\.type),(asc|desc)$'
+      example: ['price,desc', 'name,asc']
+    FilterId:
+      name: id
+      in: query
+      description: Фильтр по id
+      schema: {type: integer, format: int64, minimum: 1}
+    FilterName:
+      name: name
+      in: query
+      description: Фильтр по name
+      schema: {type: string, minLength: 1}
+    FilterCoordinatesX:
+      name: coordinates.x
+      in: query
+      description: Фильтр по coordinates.x
+      schema: {type: number, format: float}
+    FilterCoordinatesY:
+      name: coordinates.y
+      in: query
+      description: Фильтр по coordinates.y
+      schema: {type: number, format: double, maximum: 747}
+    FilterCreationDate:
+      name: creationDate
+      in: query
+      description: Фильтр по creationDate
+      schema: {type: string, format: date-time}
+    FilterPrice:
+      name: price
+      in: query
+      description: Фильтр по ненулевому price
+      schema: {type: number, format: float, exclusiveMinimum: true, minimum: 0}
+    FilterPriceNull:
+      name: price.isNull
+      in: query
+      description: При true выбрать только билеты с price=null; несовместим с price
+      schema: {type: boolean}
+    FilterComment:
+      name: comment
+      in: query
+      description: Фильтр по comment
+      schema: {type: string, maxLength: 681}
+    FilterType:
+      name: type
+      in: query
+      description: Фильтр по ненулевому type
+      schema: {$ref: '#/components/schemas/TicketType'}
+    FilterTypeNull:
+      name: type.isNull
+      in: query
+      description: При true выбрать только билеты с type=null; несовместим с type
+      schema: {type: boolean}
+    FilterVenueNull:
+      name: venue.isNull
+      in: query
+      description: При true выбрать только билеты с venue=null; несовместим с venue.*
+      schema: {type: boolean}
+    FilterVenueId:
+      name: venue.id
+      in: query
+      description: Фильтр по venue.id
+      schema: {type: integer, format: int32, minimum: 1}
+    FilterVenueName:
+      name: venue.name
+      in: query
+      description: Фильтр по venue.name
+      schema: {type: string, minLength: 1}
+    FilterVenueCapacity:
+      name: venue.capacity
+      in: query
+      description: Фильтр по venue.capacity
+      schema: {type: integer, format: int64, minimum: 1}
+    FilterVenueType:
+      name: venue.type
+      in: query
+      description: Фильтр по venue.type
+      schema: {$ref: '#/components/schemas/VenueType'}
+
+  schemas:
+    TicketType:
+      type: string
+      enum: [VIP, USUAL, BUDGETARY, CHEAP]
+    VenueType:
+      type: string
+      enum: [PUB, BAR, OPEN_AREA, MALL, STADIUM]
+    Coordinates:
+      type: object
+      additionalProperties: false
+      required: [x, y]
+      properties:
+        x:
+          type: number
+          format: float
+          description: Координата x; обязательна
+        y:
+          type: number
+          format: double
+          maximum: 747
+          description: Координата y, не более 747
+    Venue:
+      type: object
+      additionalProperties: false
+      required: [id, name, capacity, type]
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          readOnly: true
+          description: Уникальный идентификатор, генерируется сервером
+        name:
+          type: string
+          minLength: 1
+        capacity:
+          type: integer
+          format: int64
+          minimum: 1
+        type: {$ref: '#/components/schemas/VenueType'}
+    VenueInput:
+      type: object
+      additionalProperties: false
+      required: [name, capacity, type]
+      properties:
+        name: {type: string, minLength: 1}
+        capacity: {type: integer, format: int64, minimum: 1}
+        type: {$ref: '#/components/schemas/VenueType'}
+    Ticket:
+      type: object
+      additionalProperties: false
+      required: [id, name, coordinates, creationDate, comment, bookedPersonIds]
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+        name: {type: string, minLength: 1}
+        coordinates: {$ref: '#/components/schemas/Coordinates'}
+        creationDate:
+          type: string
+          format: date-time
+          readOnly: true
+        price:
+          type: number
+          format: float
+          nullable: true
+          exclusiveMinimum: true
+          minimum: 0
+        comment: {type: string, maxLength: 681}
+        type:
+          type: string
+          allOf: [{$ref: '#/components/schemas/TicketType'}]
+          nullable: true
+        venue:
+          type: object
+          allOf: [{$ref: '#/components/schemas/Venue'}]
+          nullable: true
+        bookedPersonIds:
+          type: array
+          readOnly: true
+          uniqueItems: true
+          description: Идентификаторы людей, забронировавших билет
+          items: {type: integer, format: int64, minimum: 1}
+    TicketCreate:
+      type: object
+      additionalProperties: false
+      required: [name, coordinates, comment]
+      properties:
+        name: {type: string, minLength: 1}
+        coordinates: {$ref: '#/components/schemas/Coordinates'}
+        price:
+          type: number
+          format: float
+          nullable: true
+          exclusiveMinimum: true
+          minimum: 0
+        comment: {type: string, maxLength: 681}
+        type:
+          type: string
+          allOf: [{$ref: '#/components/schemas/TicketType'}]
+          nullable: true
+        venue:
+          type: object
+          allOf: [{$ref: '#/components/schemas/VenueInput'}]
+          nullable: true
+    TicketUpdate:
+      allOf:
+        - {$ref: '#/components/schemas/TicketCreate'}
+      description: Полное новое состояние изменяемых полей билета
+    TicketPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Ticket'}
+        page: {type: integer, minimum: 1}
+        size: {type: integer, minimum: 1}
+        totalElements: {type: integer, format: int64, minimum: 0}
+        totalPages: {type: integer, minimum: 0}
+    CancellationResult:
+      type: object
+      additionalProperties: false
+      required: [personId, affectedTickets]
+      properties:
+        personId: {type: integer, format: int64, minimum: 1}
+        affectedTickets:
+          type: integer
+          minimum: 0
+          description: Число билетов, из которых удалён personId
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [status, title]
+      properties:
+        type: {type: string, format: uri, default: 'about:blank'}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        detail: {type: string}
+        instance: {type: string, format: uri}
+        violations:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: {type: string}
+              message: {type: string}
+
+  responses:
+    BadRequest:
+      description: Некорректный URL-параметр или синтаксически неверный JSON
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: Билет не найден
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Conflict:
+      description: Конфликт с текущим состоянием данных или ограничением уникальности
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    ValidationError:
+      description: JSON корректен синтаксически, но нарушает ограничения целостности
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+          example:
+            type: about:blank
+            title: Validation failed
+            status: 422
+            detail: Переданные данные нарушают ограничения Ticket
+            violations:
+              - {field: price, message: должно быть больше 0}
+    UpstreamError:
+      description: Первый сервис недоступен или вернул некорректный ответ
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
