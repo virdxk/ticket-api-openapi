@@ -3,19 +3,19 @@ info:
   title: Booking Service API
   version: 1.0.0
   description: |
-    Второй веб-сервис, расположенный на URL `/booking`. 
-    
-    Реализует операции
-    продажи и отмены бронирований, вызывая API первого сервиса (Ticket Service).
-    Модели Ticket и Problem описаны в спецификации первого сервиса
-    `ticket-service.yaml`.
+    Второй веб-сервис, расположенный на URL `/booking`.
+
+    Хранит бронирования: связь человека из Person Service с билетом из
+    Ticket Service. Ticket Service и Person Service друг о друге не знают,
+    связь между ними существует только здесь. Продажа VIP-копии вызывает API
+    этих сервисов; если они недоступны, возвращается `503`.
 security: []
 servers:
   - url: http://localhost:8081
     description: Локальное окружение
 tags:
   - name: Booking
-    description: Операции второго веб-сервиса, вызывающего API сервиса билетов
+    description: Операции продажи и отмены бронирований
 
 paths:
   /booking/sell/vip/{ticketId}/{personId}:
@@ -24,36 +24,44 @@ paths:
       operationId: sellVipTicket
       summary: Продать VIP-копию билета
       description: |
-        Второй сервис получает исходный билет через API первого сервиса, создаёт
-        его копию с новым автоматически сгенерированным `id` и `creationDate`,
-        устанавливает `type=VIP`, удваивает `price` и добавляет `personId` в
-        `bookedPersonIds` созданной копии. Исходный билет не изменяется.
-        Если цена исходного билета равна `null`, операция невозможна.
+        Проверяет через Person Service, что человек существует, получает
+        исходный билет из Ticket Service и создаёт в нём копию с `type=VIP` и
+        удвоенной `price`. Затем сохраняет бронирование созданной копии на
+        этого человека и возвращает его вместе с `id` брони. Исходный билет
+        не изменяется. Если цена исходного билета равна `null`, удвоить её
+        нельзя, и операция завершается с `409`.
       parameters:
-        - {$ref: './ticket-service.yaml#/components/parameters/TicketId'}
+        - {$ref: '#/components/parameters/TicketId'}
         - {$ref: '#/components/parameters/PersonId'}
       responses:
         '201':
           description: VIP-копия создана и забронирована
           headers:
             Location:
-              description: URL созданного билета в первом сервисе
+              description: URL созданного бронирования
               schema: {type: string, format: uri}
           content:
             application/json:
-              schema: {$ref: './ticket-service.yaml#/components/schemas/Ticket'}
-        '400': {$ref: './ticket-service.yaml#/components/responses/BadRequest'}
+              schema: {$ref: '#/components/schemas/Booking'}
+        '400': {$ref: '#/components/responses/BadRequest'}
         '404':
-          description: Исходный билет не найден
+          description: Исходный билет или человек не найден
           content:
             application/json:
-              schema: {$ref: './ticket-service.yaml#/components/schemas/Problem'}
+              schema: {$ref: '#/components/schemas/Error'}
+              example:
+                details: Билет с id=42 не найден
+                timestamp: '2026-10-02T18:30:00Z'
         '409':
-          description: VIP-копию нельзя создать, например цена исходного билета равна null
+          description: Цена исходного билета равна null, VIP-копию создать нельзя
           content:
             application/json:
-              schema: {$ref: './ticket-service.yaml#/components/schemas/Problem'}
-        '422': {$ref: './ticket-service.yaml#/components/responses/ValidationError'}
+              schema: {$ref: '#/components/schemas/Error'}
+              example:
+                details: У билета с id=42 не задана цена
+                timestamp: '2026-10-02T18:30:00Z'
+        '500': {$ref: '#/components/responses/InternalError'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
 
   /booking/person/{personId}/cancel:
     delete:
@@ -61,34 +69,107 @@ paths:
       operationId: cancelPersonBookings
       summary: Отменить все бронирования человека
       description: |
-        Второй сервис удаляет `personId` из `bookedPersonIds` каждого билета,
-        используя API первого сервиса. Повторный вызов идемпотентен.
+        Удаляет все бронирования указанного человека. Билеты в Ticket Service
+        не изменяются. Повторный вызов идемпотентен: если бронирований нет,
+        возвращается `cancelledBookings=0`.
       parameters:
         - {$ref: '#/components/parameters/PersonId'}
       responses:
         '200':
-          description: Операция завершена, в том числе если бронирований не было
+          description: Бронирования отменены
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CancellationResult'}
-        '400': {$ref: './ticket-service.yaml#/components/responses/BadRequest'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalError'}
 
 components:
   parameters:
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      description: Идентификатор исходного билета в Ticket Service
+      schema: {type: integer, format: int64, minimum: 1}
     PersonId:
       name: personId
       in: path
       required: true
-      description: Положительный идентификатор человека
+      description: Идентификатор человека в Person Service
       schema: {type: integer, format: int64, minimum: 1}
+
   schemas:
+    Booking:
+      type: object
+      additionalProperties: false
+      required: [id, ticketId, personId, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+          description: Уникальный идентификатор бронирования, генерируется сервером
+        ticketId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Идентификатор созданной VIP-копии в Ticket Service
+        personId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Идентификатор человека в Person Service
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Время создания бронирования
     CancellationResult:
       type: object
       additionalProperties: false
-      required: [personId, affectedTickets]
+      required: [personId, cancelledBookings]
       properties:
         personId: {type: integer, format: int64, minimum: 1}
-        affectedTickets:
+        cancelledBookings:
           type: integer
           minimum: 0
-          description: Число билетов, из которых удалён personId
+          description: Число отменённых бронирований
+    Error:
+      type: object
+      additionalProperties: false
+      required: [details, timestamp]
+      properties:
+        details:
+          type: string
+          description: Описание ошибки
+        timestamp:
+          type: string
+          format: date-time
+          description: Время возникновения ошибки
+
+  responses:
+    BadRequest:
+      description: Некорректный URL-параметр
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: 'ticketId: должно быть больше 0'
+            timestamp: '2026-10-02T18:30:00Z'
+    InternalError:
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: Внутренняя ошибка сервера
+            timestamp: '2026-10-02T18:30:00Z'
+    ServiceUnavailable:
+      description: Ticket Service или Person Service недоступен
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: Ticket Service недоступен
+            timestamp: '2026-10-02T18:30:00Z'

@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: Person Service API
+  version: 1.0.0
+  description: |
+    Третий веб-сервис, расположенный на URL `/persons`.
+
+    Хранит людей, которые бронируют билеты. Поле `id` формируется сервером.
+    Все данные передаются в JSON. Идентификаторы и параметры выборки
+    передаются в URL. Сервис ничего не знает о билетах и бронированиях.
+security: []
+servers:
+  - url: http://localhost:8082
+    description: Локальное окружение
+tags:
+  - name: Persons
+    description: Базовые CRUD-операции над коллекцией Person
+
+paths:
+  /persons:
+    post:
+      tags: [Persons]
+      operationId: createPerson
+      summary: Добавить человека
+      description: Создаёт нового человека. `id` генерируется автоматически и не принимается от клиента.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PersonCreate'}
+            example:
+              firstName: Иван
+              lastName: Иванов
+              birthday: '2004-05-17'
+      responses:
+        '201':
+          description: Человек создан
+          headers:
+            Location:
+              description: URL созданного человека
+              schema: {type: string, format: uri}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Person'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    get:
+      tags: [Persons]
+      operationId: listPersons
+      summary: Получить страницу людей
+      description: |
+        Возвращает страницу коллекции с фильтрацией и сортировкой по любой
+        комбинации полей Person. Фильтры `filter` и сортировки `sort`
+        повторяются; фильтры объединяются через `AND`, порядок `sort` задаёт
+        приоритет сортировки.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PageSize'}
+        - {$ref: '#/components/parameters/Sort'}
+        - {$ref: '#/components/parameters/Filter'}
+      responses:
+        '200':
+          description: Страница людей
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PersonPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalError'}
+
+  /persons/{personId}:
+    parameters:
+      - {$ref: '#/components/parameters/PersonId'}
+    get:
+      tags: [Persons]
+      operationId: getPerson
+      summary: Получить человека по идентификатору
+      description: Возвращает одного человека по его уникальному идентификатору.
+      responses:
+        '200':
+          description: Человек найден
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Person'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    patch:
+      tags: [Persons]
+      operationId: updatePerson
+      summary: Обновить человека
+      description: 'Частично обновляет человека: меняются только переданные поля. `id` не изменяется.'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: {$ref: '#/components/schemas/PersonPatch'}
+            example:
+              lastName: Петров
+      responses:
+        '200':
+          description: Человек обновлён
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Person'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    delete:
+      tags: [Persons]
+      operationId: deletePerson
+      summary: Удалить человека
+      description: Удаляет человека с указанным идентификатором.
+      responses:
+        '204': {description: 'Человек удалён, тело ответа отсутствует'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+
+components:
+  parameters:
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      description: Уникальный идентификатор человека
+      schema: {type: integer, format: int64, minimum: 1}
+    Page:
+      name: page
+      in: query
+      description: Номер страницы, начиная с 1
+      schema: {type: integer, minimum: 1, default: 1}
+    PageSize:
+      name: size
+      in: query
+      description: Число элементов на странице
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    Sort:
+      name: sort
+      in: query
+      description: |
+        Повторяемый параметр `<поле>,<направление>`, например
+        `sort=lastName,asc&sort=birthday,desc`. Поле: `id`, `firstName`,
+        `lastName` или `birthday`; направление: `asc`/`desc`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^(id|firstName|lastName|birthday),(asc|desc)$'
+      example: ['lastName,asc', 'firstName,asc']
+    Filter:
+      name: filter
+      in: query
+      description: |
+        Повторяемый фильтр `<поле><оператор><значение>`. Несколько фильтров
+        объединяются через `AND`.
+
+        Операторы: `=`, `!=`, `>`, `>=`, `<`, `<=`, `~` (строка содержит
+        подстроку, регистр не учитывается).
+
+        Поля: `id`, `firstName`, `lastName`, `birthday`.
+
+        Примеры: `lastName~иван`, `birthday>=2000-01-01`, `id!=5`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^(id|firstName|lastName|birthday)(!=|>=|<=|=|>|<|~).*$'
+      example: ['lastName~иван', 'birthday>=2000-01-01']
+
+  schemas:
+    Person:
+      type: object
+      additionalProperties: false
+      required: [id, firstName, lastName, birthday]
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+          description: Уникальный идентификатор, генерируется сервером
+        firstName:
+          type: string
+          minLength: 1
+          description: Имя
+        lastName:
+          type: string
+          minLength: 1
+          description: Фамилия
+        birthday:
+          type: string
+          format: date
+          description: Дата рождения, не позже текущей даты
+    PersonCreate:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, birthday]
+      properties:
+        firstName: {type: string, minLength: 1}
+        lastName: {type: string, minLength: 1}
+        birthday: {type: string, format: date}
+    PersonPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Частичное обновление (JSON Merge Patch); передаются только изменяемые поля
+      properties:
+        firstName: {type: string, minLength: 1}
+        lastName: {type: string, minLength: 1}
+        birthday: {type: string, format: date}
+    PersonPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, totalElements, totalPages]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Person'}
+        page: {type: integer, minimum: 1}
+        size: {type: integer, minimum: 1}
+        totalElements: {type: integer, format: int64, minimum: 0}
+        totalPages: {type: integer, minimum: 0}
+    Error:
+      type: object
+      additionalProperties: false
+      required: [details, timestamp]
+      properties:
+        details:
+          type: string
+          description: Описание ошибки
+        timestamp:
+          type: string
+          format: date-time
+          description: Время возникновения ошибки
+
+  responses:
+    BadRequest:
+      description: Некорректный URL-параметр или синтаксически неверный JSON
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: 'Параметр filter: неизвестное поле "age"'
+            timestamp: '2026-10-02T18:30:00Z'
+    NotFound:
+      description: Человек не найден
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: Человек с id=7 не найден
+            timestamp: '2026-10-02T18:30:00Z'
+    ValidationError:
+      description: JSON корректен синтаксически, но нарушает ограничения целостности
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: 'birthday: дата рождения не может быть в будущем'
+            timestamp: '2026-10-02T18:30:00Z'
+    InternalError:
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            details: Внутренняя ошибка сервера
+            timestamp: '2026-10-02T18:30:00Z'

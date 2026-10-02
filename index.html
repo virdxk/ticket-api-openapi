@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ticket Service и Booking Service API</title>
+  <title>Ticket, Booking и Person Service API</title>
   <link rel="stylesheet" href="./swagger-ui/swagger-ui.css">
   <style>
     html { box-sizing: border-box; overflow-y: scroll; }
@@ -20,7 +20,8 @@
       window.ui = SwaggerUIBundle({
         urls: [
           { url: './ticket-service.yaml', name: 'Ticket Service' },
-          { url: './booking-service.yaml', name: 'Booking Service' }
+          { url: './booking-service.yaml', name: 'Booking Service' },
+          { url: './person-service.yaml', name: 'Person Service' }
         ],
         'urls.primaryName': 'Ticket Service',
         dom_id: '#swagger-ui',
