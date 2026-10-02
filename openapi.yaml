@@ -246,7 +246,6 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Problem'}
         '422': {$ref: '#/components/responses/ValidationError'}
-        '502': {$ref: '#/components/responses/UpstreamError'}
 
   /booking/person/{personId}/cancel:
     delete:
@@ -265,7 +264,6 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/CancellationResult'}
         '400': {$ref: '#/components/responses/BadRequest'}
-        '502': {$ref: '#/components/responses/UpstreamError'}
 
 components:
   parameters:
@@ -563,8 +561,3 @@ components:
             detail: Переданные данные нарушают ограничения Ticket
             violations:
               - {field: price, message: должно быть больше 0}
-    UpstreamError:
-      description: Первый сервис недоступен или вернул некорректный ответ
-      content:
-        application/problem+json:
-          schema: {$ref: '#/components/schemas/Problem'}
