@@ -52,7 +52,7 @@ paths:
       description: |
         Возвращает страницу коллекции с фильтрацией и сортировкой по любой
         комбинации полей Person. Фильтры `filter` и сортировки `sort`
-        повторяются; фильтры объединяются через `AND`, порядок `sort` задаёт
+        повторяются. Фильтры объединяются через `AND`, порядок `sort` задаёт
         приоритет сортировки.
       parameters:
         - {$ref: '#/components/parameters/Page'}
@@ -142,7 +142,7 @@ components:
       description: |
         Повторяемый параметр `<поле>,<направление>`, например
         `sort=lastName,asc&sort=birthday,desc`. Поле: `id`, `firstName`,
-        `lastName` или `birthday`; направление: `asc`/`desc`.
+        `lastName` или `birthday`. Направление: `asc`/`desc`.
       style: form
       explode: true
       schema:
@@ -209,7 +209,7 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
-      description: Частичное обновление (JSON Merge Patch); передаются только изменяемые поля
+      description: Частичное обновление (JSON Merge Patch), передаются только изменяемые поля
       properties:
         firstName: {type: string, minLength: 1}
         lastName: {type: string, minLength: 1}

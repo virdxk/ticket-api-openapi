@@ -64,7 +64,7 @@ paths:
       description: |
         Возвращает страницу коллекции с фильтрацией и сортировкой по любой
         комбинации полей Ticket, включая вложенные. Фильтры `filter` и
-        сортировки `sort` повторяются; фильтры объединяются через `AND`,
+        сортировки `sort` повторяются. Фильтры объединяются через `AND`,
         порядок `sort` задаёт приоритет сортировки.
       parameters:
         - {$ref: '#/components/parameters/Page'}
@@ -177,7 +177,7 @@ components:
         Повторяемый параметр `<поле>,<направление>`, например
         `sort=price,desc&sort=name,asc`. Поле: `id`, `name`, `coordinates.x`,
         `coordinates.y`, `creationDate`, `price`, `comment`, `type`, `venue.id`,
-        `venue.name`, `venue.capacity` или `venue.type`; направление: `asc`/`desc`.
+        `venue.name`, `venue.capacity` или `venue.type`. Направление: `asc`/`desc`.
       style: form
       explode: true
       schema:
@@ -226,7 +226,7 @@ components:
         x:
           type: number
           format: float
-          description: Координата x; обязательна
+          description: Координата x, обязательна
         y:
           type: number
           format: double
@@ -317,7 +317,7 @@ components:
       additionalProperties: false
       minProperties: 1
       description: |
-        Частичное обновление (JSON Merge Patch). Передаются только изменяемые поля;
+        Частичное обновление (JSON Merge Patch). Передаются только изменяемые поля,
         `null` очищает nullable-поле. Поле `venue` заменяется целиком.
       properties:
         name: {type: string, minLength: 1}
