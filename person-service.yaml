@@ -164,6 +164,11 @@ components:
         Поля: `id`, `firstName`, `lastName`, `birthday`.
 
         Примеры: `lastName~иван`, `birthday>=2000-01-01`, `id!=5`.
+
+        Пример запроса: люди с фамилией, содержащей «иван», родившиеся с 2000
+        года, по алфавиту:
+
+        `GET /persons?filter=lastName~иван&filter=birthday>=2000-01-01&sort=lastName,asc`
       style: form
       explode: true
       schema:

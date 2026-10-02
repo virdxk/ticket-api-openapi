@@ -246,6 +246,10 @@ components:
         Поля: `id`, `ticketId`, `personId`, `createdAt`.
 
         Примеры: `personId=7`, `createdAt>=2026-10-01T00:00:00`.
+
+        Пример запроса: бронирования человека 7 за октябрь 2026, новые первыми:
+
+        `GET /booking/bookings?filter=personId=7&filter=createdAt>=2026-10-01T00:00:00&sort=createdAt,desc`
       style: form
       explode: true
       schema:
