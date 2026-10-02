@@ -243,6 +243,22 @@ components:
           type: string
           format: date-time
           description: Время возникновения ошибки
+        errors:
+          type: array
+          description: |
+            Ошибки валидации JSON запроса, по одной на нарушенное ограничение.
+            Заполняется только в ответе `422`.
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                description: Путь к полю в JSON запроса
+              message:
+                type: string
+                description: Какое ограничение нарушено
 
   responses:
     BadRequest:
@@ -267,8 +283,11 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
           example:
-            details: 'birthday: дата рождения не может быть в будущем'
+            details: JSON запроса нарушает ограничения Person
             timestamp: '2026-10-02T18:30:00Z'
+            errors:
+              - {field: firstName, message: не должно быть пустым}
+              - {field: birthday, message: дата рождения не может быть в будущем}
     InternalError:
       description: Внутренняя ошибка сервиса
       content:
