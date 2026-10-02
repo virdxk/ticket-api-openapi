@@ -190,27 +190,12 @@ components:
       name: filter
       in: query
       description: |
-        Повторяемый фильтр `<поле><оператор><значение>`. Несколько фильтров
-        объединяются через `AND`.
+        Повторяемый фильтр `<поле><оператор><значение>`, фильтры объединяются через `AND`.
+        Операторы: `=`, `!=`, `>`, `>=`, `<`, `<=`, `~` (содержит подстроку).
+        Поля: `id`, `name`, `coordinates.x`, `coordinates.y`, `creationDate`, `price`,
+        `comment`, `type`, `venue.id`, `venue.name`, `venue.capacity`, `venue.type`.
 
-        Операторы: `=`, `!=`, `>`, `>=`, `<`, `<=`, `~` (строка содержит
-        подстроку, регистр не учитывается).
-
-        Поля: `id`, `name`, `coordinates.x`, `coordinates.y`, `creationDate`,
-        `price`, `comment`, `type`, `venue.id`, `venue.name`, `venue.capacity`,
-        `venue.type`. Значение `null` с `=` и `!=` проверяет пустое поле.
-
-        Примеры: `price>=100`, `name~концерт`, `venue.type=STADIUM`,
-        `creationDate<2026-10-01T00:00:00`, `price=null`.
-
-        Пример запроса: билеты дороже 100 на стадионах, в названии которых есть
-        «концерт», вторая страница по 10 штук, сначала самые дорогие:
-
-        `GET /tickets?filter=price>100&filter=venue.type=STADIUM&filter=name~концерт&sort=price,desc&page=2&size=10`
-
-        В URL спецсимволы кодируются, тот же запрос в закодированном виде:
-
-        `GET /tickets?filter=price%3E100&filter=venue.type%3DSTADIUM&filter=name~%D0%BA%D0%BE%D0%BD%D1%86%D0%B5%D1%80%D1%82&sort=price,desc&page=2&size=10`
+        Пример: `GET /tickets?filter=price>100&filter=name~концерт`
       style: form
       explode: true
       schema:
