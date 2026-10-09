@@ -17,7 +17,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addConverter(String.class, List.class, (Converter<String, List>) List::of);
     }
 
-    // The client page is served by se.ifmo.ru and calls the services through an ssh tunnel on localhost.
+    // The client page is served by se.ifmo.ru and calls the services on helios from the browser.
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")

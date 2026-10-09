@@ -10,8 +10,8 @@ info:
     передаются в URL. Сервис ничего не знает о билетах и бронированиях.
 security: []
 servers:
-  - url: https://localhost:41391
-    description: helios через ssh-туннель
+  - url: https://helios.cs.ifmo.ru:41391
+    description: Развёртывание на helios
 tags:
   - name: Persons
     description: Базовые CRUD-операции над коллекцией Person

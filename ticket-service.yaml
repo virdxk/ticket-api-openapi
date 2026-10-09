@@ -11,8 +11,8 @@ info:
     Booking Service.
 security: []
 servers:
-  - url: https://localhost:41390
-    description: helios через ssh-туннель
+  - url: https://helios.cs.ifmo.ru:41390
+    description: Развёртывание на helios
 tags:
   - name: Tickets
     description: Базовые CRUD-операции над коллекцией Ticket
