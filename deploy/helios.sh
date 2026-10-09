@@ -48,10 +48,7 @@ JVM_OPTS="-Xmx128m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:MaxMeta
 
 instance() { # name https-port shutdown-port
     base=$SOA/tomcat-${1%-service}
-    if [ -f "$base/conf/server.xml" ]; then
-        CATALINA_BASE=$base "$CATALINA_HOME/bin/shutdown.sh" >/dev/null 2>&1 || true
-        sleep 3
-    fi
+    while pkill -f "catalina.base=$base " 2>/dev/null; do sleep 2; done
     rm -rf "$base"
     mkdir -p "$base/conf" "$base/logs" "$base/temp" "$base/webapps" "$base/work"
     cp "$CATALINA_HOME/conf/web.xml" "$CATALINA_HOME/conf/logging.properties" "$base/conf/"
