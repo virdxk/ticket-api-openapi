@@ -21,7 +21,6 @@
         <module>ticket-service</module>
         <module>person-service</module>
         <module>booking-service</module>
-        <module>client</module>
     </modules>
 
     <properties>

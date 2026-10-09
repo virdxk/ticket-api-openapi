@@ -14,7 +14,6 @@ export CATALINA_HOME=$SOA/apache-tomcat-$TOMCAT_VERSION
 TICKET_PORT=41390
 PERSON_PORT=41391
 BOOKING_PORT=41392
-CLIENT_PORT=41393
 
 if [ ! -d "$CATALINA_HOME" ]; then
     fetch -o "$SOA/tomcat.tar.gz" \
@@ -43,7 +42,6 @@ export DB_USER=$(id -un)
 export DB_PASSWORD=$(head -1 "$HOME/.pgpass" | cut -d: -f5)
 export TICKET_SERVICE_URL=https://localhost:$TICKET_PORT
 export PERSON_SERVICE_URL=https://localhost:$PERSON_PORT
-export BOOKING_SERVICE_URL=https://localhost:$BOOKING_PORT
 JVM_OPTS="-Xmx128m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:MaxMetaspaceSize=160m -XX:CompressedClassSpaceSize=48m -XX:ReservedCodeCacheSize=48m -XX:MaxDirectMemorySize=32m -Djavax.net.ssl.trustStore=$SOA/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit"
 
 instance() { # name https-port shutdown-port
@@ -79,4 +77,3 @@ XML
 instance ticket-service $TICKET_PORT 41395
 instance person-service $PERSON_PORT 41396
 instance booking-service $BOOKING_PORT 41397
-instance client $CLIENT_PORT 41398
