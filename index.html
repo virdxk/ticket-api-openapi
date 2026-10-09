@@ -16,17 +16,8 @@
   <script src="./swagger-ui/swagger-ui-bundle.js"></script>
   <script src="./swagger-ui/swagger-ui-standalone-preset.js"></script>
   <script>
-    // se.ifmo.ru passes only GET and POST, so other methods travel as POST
-    // with X-HTTP-Method-Override and lab2/api.php restores them.
     window.onload = function () {
       window.ui = SwaggerUIBundle({
-        requestInterceptor: function (req) {
-          if (req.method !== 'GET' && req.method !== 'POST') {
-            req.headers['X-HTTP-Method-Override'] = req.method;
-            req.method = 'POST';
-          }
-          return req;
-        },
         urls: [
           { url: './ticket-service.yaml', name: 'Ticket Service' },
           { url: './booking-service.yaml', name: 'Booking Service' },
