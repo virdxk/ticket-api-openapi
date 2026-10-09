@@ -81,6 +81,11 @@ export class ApiError extends Error {
 export async function request(method, url, body, contentType = 'application/json') {
   const req = { method, url, body, contentType: body === undefined ? undefined : contentType };
   const init = { method, headers: { Accept: 'application/json' } };
+  // se.ifmo.ru only lets GET and POST through; api.php restores the real method.
+  if (method !== 'GET' && method !== 'POST') {
+    init.method = 'POST';
+    init.headers['X-HTTP-Method-Override'] = method;
+  }
   if (body !== undefined) {
     init.body = body;
     init.headers['Content-Type'] = contentType;
