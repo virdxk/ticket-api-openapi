@@ -12,8 +12,8 @@ info:
     сервис недоступен.
 security: []
 servers:
-  - url: http://localhost:8081
-    description: Локальное окружение
+  - url: https://se.ifmo.ru/~s412939/lab2/api.php
+    description: Развёртывание на helios
 tags:
   - name: Bookings
     description: Базовые CRUD-операции над коллекцией Booking
