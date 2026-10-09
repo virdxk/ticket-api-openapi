@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds the services locally (helios has no access to Maven Central), deploys them to
-# helios and publishes the client at https://se.ifmo.ru/~s412939/lab2/.
+# helios and publishes the client page at https://se.ifmo.ru/~s412939/lab2/.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -13,4 +13,4 @@ tar -czf - -C target lib dist | ssh -p 2222 s412939@helios.cs.ifmo.ru \
     'mkdir -p soa && rm -rf soa/lib soa/dist && tar -xzf - -C soa && sh soa/dist/helios.sh'
 tar -czf - -C client . | ssh -p 2222 s412939@helios.cs.ifmo.ru \
     'rm -rf public_html/lab2 && mkdir -p public_html/lab2 && tar -xzf - -C public_html/lab2 \
-     && cp soa/server.crt public_html/lab2/ && chmod -R a+rX public_html/lab2'
+     && chmod -R a+rX public_html/lab2'

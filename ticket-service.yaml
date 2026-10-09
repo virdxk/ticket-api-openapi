@@ -11,8 +11,8 @@ info:
     Booking Service.
 security: []
 servers:
-  - url: https://se.ifmo.ru/~s412939/lab2/api.php
-    description: Развёртывание на helios
+  - url: https://localhost:41390
+    description: helios через ssh-туннель
 tags:
   - name: Tickets
     description: Базовые CRUD-операции над коллекцией Ticket
