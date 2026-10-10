@@ -31,7 +31,10 @@ public class JacksonConfig {
         return builder -> builder
                 .featuresToEnable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .featuresToDisable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
-                .postConfigurer(mapper -> NON_NULLABLE.forEach(type ->
-                        mapper.configOverride(type).setSetterInfo(JsonSetter.Value.forValueNulls(Nulls.FAIL))));
+                .postConfigurer(mapper -> {
+                    NON_NULLABLE.forEach(type ->
+                            mapper.configOverride(type).setSetterInfo(JsonSetter.Value.forValueNulls(Nulls.FAIL)));
+                    mapper.addHandler(BodyErrors.HANDLER);
+                });
     }
 }

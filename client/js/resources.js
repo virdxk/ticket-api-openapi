@@ -2,7 +2,7 @@ import {
   h, dash, dl, fmtDate, fmtDateTime, fmtEnum, fmtNumber, plural, input, request, renderSuccess, createResourceTab,
 } from './lib.js';
 
-const TICKET_TYPES = { VIP: 'VIP', USUAL: 'обычный', BUDGETARY: 'бюджетный', CHEAP: 'дешёвый' };
+const TICKET_TYPES = { VIP: 'ВИП', USUAL: 'обычный', BUDGETARY: 'бюджетный', CHEAP: 'дешёвый' };
 const VENUE_TYPES = { PUB: 'паб', BAR: 'бар', OPEN_AREA: 'открытая площадка', MALL: 'торговый центр', STADIUM: 'стадион' };
 const enc = v => encodeURIComponent(String(v).trim());
 

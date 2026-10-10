@@ -481,7 +481,7 @@ export function createResourceTab(cfg) {
   const element = h('div', null,
     h('section', { class: 'box' }, h('h3', { text: `Список (GET ${cfg.basePath})` }), list.element),
     result,
-    h('div', { class: 'grid' }, getCard, createCard, patchCard, cfg.extra ? cfg.extra({ ...ctx, action }) : null));
+    h('div', { class: 'grid' }, patchCard, createCard, getCard, cfg.extra ? cfg.extra({ ...ctx, action }) : null));
 
   return { element, reload: list.reload };
 }
