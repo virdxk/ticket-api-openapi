@@ -10,6 +10,8 @@ import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -29,7 +31,8 @@ import java.util.regex.Pattern;
  * API field names match JPA attribute paths; first segments listed in {@code joins} are left-joined
  * so that filtering and sorting by a field of a nullable association keeps rows without it.
  */
-public final class PageQuery {
+@Repository
+public class PageQuery {
 
     private static final Pattern FILTER = Pattern.compile("^([A-Za-z.]+?)(!=|>=|<=|=|>|<|~)(.*)$", Pattern.DOTALL);
     private static final Pattern SORT = Pattern.compile("^([A-Za-z.]+),(asc|desc)$");
@@ -37,10 +40,10 @@ public final class PageQuery {
     public record Result<T>(List<T> items, long totalElements, int totalPages) {
     }
 
-    private PageQuery() {
-    }
+    @Autowired
+    private EntityManager em;
 
-    public static <T> Result<T> find(EntityManager em, Class<T> entity, Set<String> fields, Set<String> joins,
+    public <T> Result<T> find(Class<T> entity, Set<String> fields, Set<String> joins,
             int page, int size, List<String> sort, List<String> filter) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
 

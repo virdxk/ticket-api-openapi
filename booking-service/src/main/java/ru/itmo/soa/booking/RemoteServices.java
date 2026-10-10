@@ -1,5 +1,6 @@
 package ru.itmo.soa.booking;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ public class RemoteServices {
     private final TicketsApi tickets;
     private final PersonsApi persons;
 
+    @Autowired
     public RemoteServices(@Value("${ticket-service.url}") String ticketUrl,
                           @Value("${person-service.url}") String personUrl) {
         tickets = new TicketsApi(new ru.itmo.soa.booking.client.ticket.invoker.ApiClient().setBasePath(ticketUrl));
