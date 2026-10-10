@@ -118,6 +118,14 @@ function requestDetails(req) {
   return h('details', { class: 'req' }, h('summary', { text: 'Отправленный запрос' }), h('pre', { text }));
 }
 
+function responseDetails(res) {
+  if (!res || res.status === undefined) return null;
+  let text = `HTTP ${res.status} ${res.statusText || ''}`.trim();
+  if (res.location) text += `\nLocation: ${res.location}`;
+  text += '\n\n' + (res.isJson && res.data !== null ? JSON.stringify(res.data, null, 2) : res.text || '(пустое тело)');
+  return h('details', { class: 'req' }, h('summary', { text: 'Полученный ответ' }), h('pre', { text }));
+}
+
 export function renderError(err) {
   const panel = h('div', { class: 'panel error', role: 'alert' });
   if (!(err instanceof ApiError)) {
@@ -140,14 +148,13 @@ export function renderError(err) {
           h('thead', null, h('tr', null, h('th', { text: 'Поле' }), h('th', { text: 'Ошибка' }))),
           h('tbody', null, d.details.map(x => h('tr', null, h('td', null, h('code', { text: String(x.field) })), h('td', { text: String(x.message) }))))));
       }
-      panel.append(h('p', { class: 'muted', text: 'Полученный JSON:' }), h('pre', { text: JSON.stringify(d, null, 2) }));
     } else if (err.text) {
       panel.append(h('p', { text: 'Тело ответа не в формате Error:' }), h('pre', { text: err.text.slice(0, 2000) }));
     } else {
       panel.append(h('p', { text: 'Тело ответа пустое.' }));
     }
   }
-  panel.append(requestDetails(err.request));
+  panel.append(...[requestDetails(err.request), responseDetails(err)].filter(Boolean));
   return panel;
 }
 
@@ -156,7 +163,8 @@ export function renderSuccess(title, res, content) {
     h('h3', { text: title }),
     res && res.location && h('p', null, 'Location: ', h('code', { text: res.location })),
     content,
-    res && requestDetails(res.request));
+    res && requestDetails(res.request),
+    responseDetails(res));
 }
 
 // ---------- list view: paging, multi-level sort, multi filter ----------
@@ -247,7 +255,7 @@ function createListView(cfg) {
     try {
       const res = await request('GET', url);
       current = res.data;
-      out.replaceChildren(renderTable(res.data.items));
+      out.replaceChildren(renderTable(res.data.items), requestDetails(res.request), responseDetails(res));
       pageIn.value = String(current.page);
       pageInfo.textContent = `Страница ${current.page} из ${current.totalPages}, всего ${current.totalElements} `
         + `(по ${current.size} на странице)`;
