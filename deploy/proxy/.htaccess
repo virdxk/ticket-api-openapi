@@ -1,0 +1,7 @@
+# The user directory configuration rejects everything except GET and POST by default.
+<Limit GET POST PUT PATCH DELETE OPTIONS>
+    Require all granted
+</Limit>
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

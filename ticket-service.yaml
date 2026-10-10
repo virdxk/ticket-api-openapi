@@ -11,7 +11,7 @@ info:
     Booking Service.
 security: []
 servers:
-  - url: https://helios.cs.ifmo.ru:41390
+  - url: https://se.ifmo.ru/~s412939/ticket-service
     description: Развёртывание на helios
 tags:
   - name: Tickets

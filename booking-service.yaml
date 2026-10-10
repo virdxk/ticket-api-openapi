@@ -12,7 +12,7 @@ info:
     сервис недоступен.
 security: []
 servers:
-  - url: https://helios.cs.ifmo.ru:41392
+  - url: https://se.ifmo.ru/~s412939/booking-service
     description: Развёртывание на helios
 tags:
   - name: Bookings

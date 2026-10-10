@@ -24,7 +24,7 @@ const ticketCard = t => dl([
 
 export const tickets = () => createResourceTab({
   name: 'tickets',
-  basePath: 'https://helios.cs.ifmo.ru:41390/tickets',
+  basePath: 'https://se.ifmo.ru/~s412939/ticket-service/tickets',
   noun: 'Билет',
   msg: { created: id => `Билет #${id} создан`, updated: id => `Билет #${id} обновлён`, deleted: id => `Билет #${id} удалён` },
   fields: [
@@ -79,7 +79,7 @@ export const tickets = () => createResourceTab({
       h('datalist', { id: 'ticket-types' }, Object.keys(TICKET_TYPES).map(v => h('option', { value: v }))),
       h('div', { class: 'toolbar' }, h('label', null, 'Тип ', type),
         ctx.action('Удалить один билет', async () => {
-          const res = await request('DELETE', `https://helios.cs.ifmo.ru:41390/tickets/actions/by-type/${enc(type.value)}`);
+          const res = await request('DELETE', `https://se.ifmo.ru/~s412939/ticket-service/tickets/actions/by-type/${enc(type.value)}`);
           ctx.show(renderSuccess(`Удалён один билет типа ${type.value.trim()}`, res));
           ctx.reload();
         }, 'danger')));
@@ -90,7 +90,7 @@ export const tickets = () => createResourceTab({
 
 export const persons = () => createResourceTab({
   name: 'persons',
-  basePath: 'https://helios.cs.ifmo.ru:41391/persons',
+  basePath: 'https://se.ifmo.ru/~s412939/person-service/persons',
   noun: 'Человек',
   msg: { created: id => `Человек #${id} создан`, updated: id => `Человек #${id} обновлён`, deleted: id => `Человек #${id} удалён` },
   fields: [
@@ -119,7 +119,7 @@ const bookingCard = b => dl([
 
 export const bookings = () => createResourceTab({
   name: 'bookings',
-  basePath: 'https://helios.cs.ifmo.ru:41392/booking/bookings',
+  basePath: 'https://se.ifmo.ru/~s412939/booking-service/booking/bookings',
   noun: 'Бронирование',
   msg: {
     created: id => `Бронирование #${id} создано`, updated: id => `Бронирование #${id} обновлено`,
@@ -149,7 +149,7 @@ export const bookings = () => createResourceTab({
         h('p', { class: 'hint', text: 'Создаёт копию билета с типом VIP и удвоенной ценой и бронирует её на человека.' }),
         h('div', { class: 'toolbar' }, h('label', null, 'Билет ', sellTicket), h('label', null, 'Человек ', sellPerson),
           ctx.action('Продать', async () => {
-            const res = await request('POST', `https://helios.cs.ifmo.ru:41392/booking/sell/vip/${enc(sellTicket.value)}/${enc(sellPerson.value)}`);
+            const res = await request('POST', `https://se.ifmo.ru/~s412939/booking-service/booking/sell/vip/${enc(sellTicket.value)}/${enc(sellPerson.value)}`);
             const b = res.data;
             ctx.show(renderSuccess(`VIP-копия продана: бронирование #${b.id}, новый билет #${b.ticketId}, человек #${b.personId}`,
               res, bookingCard(b)));
@@ -158,7 +158,7 @@ export const bookings = () => createResourceTab({
       h('section', { class: 'box' }, h('h3', { text: 'Отменить все бронирования человека' }),
         h('div', { class: 'toolbar' }, h('label', null, 'Человек ', cancelPerson),
           ctx.action('Отменить', async () => {
-            const res = await request('DELETE', `https://helios.cs.ifmo.ru:41392/booking/person/${enc(cancelPerson.value)}/cancel`);
+            const res = await request('DELETE', `https://se.ifmo.ru/~s412939/booking-service/booking/person/${enc(cancelPerson.value)}/cancel`);
             const { personId, cancelledBookings: n } = res.data;
             ctx.show(renderSuccess(n === 0
               ? `У человека #${personId} не было бронирований, ничего не отменено.`
