@@ -32,7 +32,7 @@ input:disabled { background: #eceef2; color: #8a919c; }
 
 button { padding: 5px 12px; border: 1px solid #b9c0cc; border-radius: 4px; background: #f6f7f9; cursor: pointer; }
 button:hover { background: #e9ecf1; }
-button:disabled { opacity: .5; cursor: progress; }
+button:disabled { opacity: .5; cursor: not-allowed; }
 button.primary { background: #2f6fde; border-color: #2f6fde; color: #fff; }
 button.primary:hover { background: #255fc4; }
 button.danger { color: #b42318; border-color: #e3a29b; }

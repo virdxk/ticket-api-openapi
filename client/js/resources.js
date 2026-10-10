@@ -72,15 +72,13 @@ export const tickets = () => createResourceTab({
     venue: { name: 'Главный стадион', capacity: 50000, type: 'STADIUM' },
   },
   extra: ctx => {
-    const type = input('тип', 14);
-    type.value = 'VIP';
-    type.setAttribute('list', 'ticket-types');
+    const type = h('select', null, Object.entries(TICKET_TYPES).map(([value, ru]) =>
+      h('option', { value, text: value === ru ? value : `${value} (${ru})` })));
     return h('section', { class: 'box' }, h('h3', { text: 'Удалить любой билет заданного типа' }),
-      h('datalist', { id: 'ticket-types' }, Object.keys(TICKET_TYPES).map(v => h('option', { value: v }))),
       h('div', { class: 'toolbar' }, h('label', null, 'Тип ', type),
         ctx.action('Удалить один билет', async () => {
           const res = await request('DELETE', `https://se.ifmo.ru/~s412939/ticket-service/tickets/actions/by-type/${enc(type.value)}`);
-          ctx.show(renderSuccess(`Удалён один билет типа ${type.value.trim()}`, res));
+          ctx.show(renderSuccess(`Удалён один билет типа ${type.value}`, res));
           ctx.reload();
         }, 'danger')));
   },

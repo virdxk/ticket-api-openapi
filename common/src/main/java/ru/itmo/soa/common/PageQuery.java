@@ -17,6 +17,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,6 +73,7 @@ public final class PageQuery {
     private static Predicate[] predicates(CriteriaBuilder cb, Root<?> root, Map<String, From<?, ?>> joined,
             Set<String> fields, Set<String> joins, List<String> filter) {
         List<Predicate> result = new ArrayList<>();
+        Map<String, List<String[]>> byField = new HashMap<>();
         for (String raw : filter == null ? List.<String>of() : filter) {
             Matcher m = FILTER.matcher(raw);
             if (!m.matches() || !fields.contains(m.group(1))) {
@@ -79,8 +81,64 @@ public final class PageQuery {
             }
             Path<?> path = path(root, joined, joins, m.group(1));
             result.add(predicate(cb, path, m.group(1), m.group(2), m.group(3)));
+            byField.computeIfAbsent(m.group(1), f -> new ArrayList<>()).add(new String[]{m.group(2), m.group(3)});
+            checkSatisfiable(m.group(1), path.getJavaType(), byField.get(m.group(1)));
         }
         return result.toArray(Predicate[]::new);
+    }
+
+    // Conditions on one field that no value can meet are rejected instead of silently returning nothing.
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void checkSatisfiable(String field, Class<?> type, List<String[]> conditions) {
+        boolean isNull = false;
+        boolean notNull = false;
+        Comparable equal = null;
+        Comparable lower = null;
+        boolean lowerStrict = false;
+        Comparable upper = null;
+        boolean upperStrict = false;
+        List<Comparable> excluded = new ArrayList<>();
+        for (String[] c : conditions) {
+            String op = c[0];
+            if (op.equals("~")) continue;
+            if (c[1].equals("null") && (op.equals("=") || op.equals("!="))) {
+                if (op.equals("=")) isNull = true; else notNull = true;
+                continue;
+            }
+            notNull = true;
+            Comparable v = parse(type, field, c[1]);
+            switch (op) {
+                case "=" -> {
+                    if (equal != null && equal.compareTo(v) != 0) conflict(field);
+                    equal = v;
+                }
+                case "!=" -> excluded.add(v);
+                case ">", ">=" -> {
+                    int cmp = lower == null ? 1 : v.compareTo(lower);
+                    if (cmp > 0 || (cmp == 0 && op.equals(">"))) { lower = v; lowerStrict = op.equals(">"); }
+                }
+                default -> {
+                    int cmp = upper == null ? -1 : v.compareTo(upper);
+                    if (cmp < 0 || (cmp == 0 && op.equals("<"))) { upper = v; upperStrict = op.equals("<"); }
+                }
+            }
+        }
+        if (isNull && notNull) conflict(field);
+        if (lower != null && upper != null) {
+            int cmp = lower.compareTo(upper);
+            if (cmp > 0 || (cmp == 0 && (lowerStrict || upperStrict))) conflict(field);
+        }
+        if (equal != null) {
+            Comparable eq = equal;
+            if (excluded.stream().anyMatch(x -> x.compareTo(eq) == 0)) conflict(field);
+            if (lower != null && (lowerStrict ? eq.compareTo(lower) <= 0 : eq.compareTo(lower) < 0)) conflict(field);
+            if (upper != null && (upperStrict ? eq.compareTo(upper) >= 0 : eq.compareTo(upper) > 0)) conflict(field);
+        }
+    }
+
+    private static void conflict(String field) {
+        throw ApiException.badRequest("Параметр filter: условия по полю " + field
+                + " противоречат друг другу, ни одно значение им не удовлетворяет");
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -127,10 +185,15 @@ public final class PageQuery {
     private static List<Order> orders(CriteriaBuilder cb, Root<?> root, Map<String, From<?, ?>> joined,
             Set<String> fields, Set<String> joins, List<String> sort) {
         List<Order> result = new ArrayList<>();
+        Set<String> sorted = new HashSet<>();
         for (String raw : sort == null ? List.<String>of() : sort) {
             Matcher m = SORT.matcher(raw);
             if (!m.matches() || !fields.contains(m.group(1))) {
                 throw ApiException.badRequest("Параметр sort: недопустимое значение \"" + raw + "\"");
+            }
+            if (!sorted.add(m.group(1))) {
+                throw ApiException.badRequest("Параметр sort: поле " + m.group(1)
+                        + " указано несколько раз, порядок сортировки по нему неоднозначен");
             }
             Path<?> path = path(root, joined, joins, m.group(1));
             result.add(m.group(2).equals("asc") ? cb.asc(path) : cb.desc(path));

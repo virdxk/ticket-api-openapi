@@ -140,6 +140,7 @@ export function renderError(err) {
           h('thead', null, h('tr', null, h('th', { text: 'Поле' }), h('th', { text: 'Ошибка' }))),
           h('tbody', null, d.details.map(x => h('tr', null, h('td', null, h('code', { text: String(x.field) })), h('td', { text: String(x.message) }))))));
       }
+      panel.append(h('p', { class: 'muted', text: 'Полученный JSON:' }), h('pre', { text: JSON.stringify(d, null, 2) }));
     } else if (err.text) {
       panel.append(h('p', { text: 'Тело ответа не в формате Error:' }), h('pre', { text: err.text.slice(0, 2000) }));
     } else {
@@ -177,7 +178,14 @@ function createListView(cfg) {
   const urlLine = h('code', { class: 'url' });
   const out = h('div');
   const pageInfo = h('span', { class: 'page-info' });
+  const prevBtn = btn('← Назад', () => go(-1));
+  const nextBtn = btn('Вперёд →', () => go(1));
   let current = null;
+
+  const updatePager = () => {
+    prevBtn.disabled = !current || current.page <= 1;
+    nextBtn.disabled = !current || current.page >= current.totalPages;
+  };
 
   const updateCounter = () => {
     counter.textContent = `${filterRows.children.length} фильтров · ${sortRows.children.length} сортировок`;
@@ -248,6 +256,7 @@ function createListView(cfg) {
       pageInfo.textContent = '';
       out.replaceChildren(renderError(e));
     }
+    updatePager();
   }
 
   function renderTable(items) {
@@ -292,7 +301,7 @@ function createListView(cfg) {
       btn('Показать', load, 'primary')),
     h('p', null, urlLine),
     out,
-    h('div', { class: 'pager' }, btn('← Назад', () => go(-1)), pageInfo, btn('Вперёд →', () => go(1))));
+    h('div', { class: 'pager' }, prevBtn, pageInfo, nextBtn));
 
   return { element, reload: load };
 }
