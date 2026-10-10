@@ -139,7 +139,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <configuration>
-                    <!-- Libraries live once in the shared Tomcat loader: the helios disk quota is 1 GB -->
                     <packagingExcludes>WEB-INF/lib/*.jar</packagingExcludes>
                 </configuration>
             </plugin>

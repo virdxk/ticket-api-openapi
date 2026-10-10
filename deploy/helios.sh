@@ -1,7 +1,4 @@
 #!/bin/sh
-# Runs on helios: installs Tomcat, creates one HTTPS-only instance per service,
-# deploys the WARs from ~/soa/dist and (re)starts everything.
-# The WARs are thin: their libraries are loaded once from ~/soa/lib via shared.loader.
 set -eu
 ulimit -c 0
 
@@ -52,7 +49,6 @@ instance() { # name https-port shutdown-port
     cp "$CATALINA_HOME/conf/web.xml" "$CATALINA_HOME/conf/logging.properties" "$base/conf/"
     sed "s|^shared.loader=.*|shared.loader=\"$SOA/lib/*.jar\"|" "$CATALINA_HOME/conf/catalina.properties" \
         > "$base/conf/catalina.properties"
-    # Only an HTTPS connector exists, so plain HTTP is not served at all.
     cat > "$base/conf/server.xml" <<XML
 <Server port="$3" shutdown="SHUTDOWN">
   <Service name="Catalina">

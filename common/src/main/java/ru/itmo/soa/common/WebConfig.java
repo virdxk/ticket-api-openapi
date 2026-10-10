@@ -11,13 +11,11 @@ import java.util.List;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    // A single "sort=price,desc" must stay one list element instead of being split on the comma.
     @Override
     public void addFormatters(FormatterRegistry registry) {
         registry.addConverter(String.class, List.class, (Converter<String, List>) List::of);
     }
 
-    // The client page is served by se.ifmo.ru and calls the services on helios from the browser.
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")

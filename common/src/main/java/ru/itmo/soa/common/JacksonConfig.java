@@ -15,8 +15,6 @@ import java.util.List;
 @Configuration
 public class JacksonConfig {
 
-    // Nullable fields of generated models are JsonNullable, so an explicit null
-    // in any plain-typed field breaks the contract and must be rejected, not skipped.
     private static final List<Class<?>> NON_NULLABLE = List.of(
             String.class, Integer.class, Long.class, Float.class, Double.class,
             LocalDate.class, OffsetDateTime.class);

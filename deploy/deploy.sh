@@ -1,8 +1,5 @@
 #!/bin/sh
-# Builds the services locally (helios has no access to Maven Central), deploys them to helios
-# and publishes the client and the per-service proxies in public_html (https://se.ifmo.ru/~s412939/).
 set -eu
-# Keeps macOS tar from adding ._* metadata files to the archives.
 export COPYFILE_DISABLE=1
 cd "$(dirname "$0")/.."
 

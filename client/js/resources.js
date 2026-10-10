@@ -6,8 +6,6 @@ const TICKET_TYPES = { VIP: 'ВИП', USUAL: 'обычный', BUDGETARY: 'бю�
 const VENUE_TYPES = { PUB: 'паб', BAR: 'бар', OPEN_AREA: 'открытая площадка', MALL: 'торговый центр', STADIUM: 'стадион' };
 const enc = v => encodeURIComponent(String(v).trim());
 
-// ---------- tickets ----------
-
 const coords = c => (c == null ? dash() : `x = ${c.x}; y = ${c.y}`);
 
 const venueShort = v => (v == null ? dash() : h('div', null, h('strong', { text: v.name }),
@@ -84,8 +82,6 @@ export const tickets = () => createResourceTab({
   },
 });
 
-// ---------- persons ----------
-
 export const persons = () => createResourceTab({
   name: 'persons',
   basePath: 'https://se.ifmo.ru/~s412939/person-service/persons',
@@ -108,8 +104,6 @@ export const persons = () => createResourceTab({
   ],
   example: { firstName: 'Иван', lastName: 'Иванов', birthday: '2004-05-17' },
 });
-
-// ---------- bookings ----------
 
 const bookingCard = b => dl([
   ['id', b.id], ['id билета', b.ticketId], ['id человека', b.personId], ['Создано', fmtDateTime(b.createdAt)],

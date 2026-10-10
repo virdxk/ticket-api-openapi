@@ -26,11 +26,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Page of entities selected by the {@code filter}/{@code sort} query syntax shared by all services.
- * API field names match JPA attribute paths; first segments listed in {@code joins} are left-joined
- * so that filtering and sorting by a field of a nullable association keeps rows without it.
- */
 @Repository
 public class PageQuery {
 
@@ -90,7 +85,6 @@ public class PageQuery {
         return result.toArray(Predicate[]::new);
     }
 
-    // Conditions on one field that no value can meet are rejected instead of silently returning nothing.
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static void checkSatisfiable(String field, Class<?> type, List<String[]> conditions) {
         boolean isNull = false;

@@ -1,4 +1,3 @@
-// Shared building blocks: DOM helper, formatting, HTTP, error panels, list view, forms, resource tab.
 
 export function h(tag, props, ...children) {
   const el = document.createElement(tag);
@@ -26,8 +25,6 @@ function select(options, value) {
 }
 
 export const input = (placeholder, size) => h('input', { type: 'text', placeholder, size, autocomplete: 'off' });
-
-// ---------- formatting ----------
 
 export const dash = () => h('span', { class: 'null', title: 'null', text: '-' });
 
@@ -68,8 +65,6 @@ export function plural(n, one, few, many) {
 }
 
 export const enumOptions = labels => Object.entries(labels).map(([value, ru]) => ({ value, label: `${ru} (${value})` }));
-
-// ---------- HTTP ----------
 
 export class ApiError extends Error {
   constructor(kind, req, extra) {
@@ -167,8 +162,6 @@ export function renderSuccess(title, res, content) {
     responseDetails(res));
 }
 
-// ---------- list view: paging, multi-level sort, multi filter ----------
-
 const OPS = [
   ['=', 'равно'], ['!=', 'не равно'], ['>', 'больше'], ['>=', 'больше или равно'],
   ['<', 'меньше'], ['<=', 'меньше или равно'], ['~', 'содержит'],
@@ -212,7 +205,6 @@ function createListView(cfg) {
     updateCounter();
   }
 
-  // The value control follows the field: a list of values for enums, free text otherwise.
   function valueControl(f) {
     if (f.values) {
       const options = Object.entries(f.values).map(([value, ru]) => ({ value, label: value === ru ? value : `${value} (${ru})` }));
@@ -314,9 +306,6 @@ function createListView(cfg) {
   return { element, reload: load };
 }
 
-// ---------- forms ----------
-
-// Empty number field becomes null, a non-numeric value is sent as the raw string so the server can reject it.
 function numOrRaw(s) {
   const t = s.trim();
   if (t === '') return null;
@@ -364,7 +353,6 @@ function fieldRow(f, control, include) {
   return h('div', { class: 'field' }, h('div', { class: 'label' }, label, f.hint && h('small', { text: f.hint })), control);
 }
 
-// In patch mode every top-level field gets an "include" checkbox: only checked fields are sent.
 function buildForm(spec, patch) {
   const entries = spec.map(f => {
     const ctl = makeControl(f);
@@ -392,8 +380,6 @@ function buildForm(spec, patch) {
     },
   };
 }
-
-// ---------- resource tab: list + get/delete + create + patch + extra operations ----------
 
 export function createResourceTab(cfg) {
   const result = h('div', { class: 'result' });

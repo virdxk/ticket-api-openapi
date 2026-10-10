@@ -1,6 +1,4 @@
 <?php
-// Forwards every request under this directory to the service's HTTPS Tomcat on helios:
-// the Tomcat ports are closed from outside, se.ifmo.ru is not.
 $ports = ['ticket-service' => 41390, 'person-service' => 41391, 'booking-service' => 41392];
 $public = dirname($_SERVER['SCRIPT_NAME']);
 $service = 'https://localhost:' . $ports[basename(__DIR__)];

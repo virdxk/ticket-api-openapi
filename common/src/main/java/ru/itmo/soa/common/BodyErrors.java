@@ -22,11 +22,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Jackson stops at the first value of a wrong type, so a body with several such values would report
- * only one. The problem handler records every one of them and lets parsing go on; the advice then
- * reports them together with the constraint violations of the rest of the body.
- */
 @RestControllerAdvice
 public class BodyErrors extends RequestBodyAdviceAdapter {
 
@@ -58,7 +53,6 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
             return record(p, targetType.getRawClass(), "неверный тип значения");
         }
 
-        // Generated enums reject unknown values from their @JsonCreator factory.
         @Override
         public Object handleInstantiationProblem(DeserializationContext ctxt, Class<?> instClass, Object argument,
                 Throwable t) {
@@ -74,7 +68,6 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
         }
     };
 
-    // The body is rejected anyway; a placeholder of the target type keeps the parse going where null is refused.
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object record(JsonParser p, Class<?> type, String message) {
         ERRORS.get().add(new ApiError.Detail(path(p), message));

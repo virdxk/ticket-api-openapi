@@ -14,10 +14,6 @@ import ru.itmo.soa.common.ApiException;
 
 import java.util.function.Supplier;
 
-/**
- * Ticket Service and Person Service through the clients generated from their specifications.
- * TLS trust comes from the JVM truststore configured for the Tomcat instance.
- */
 @Component
 public class RemoteServices {
 

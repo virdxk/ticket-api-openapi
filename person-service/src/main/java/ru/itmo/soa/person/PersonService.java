@@ -70,7 +70,6 @@ public class PersonService {
         return repository.findById(id).orElseThrow(() -> ApiException.notFound("Человек с id=" + id + " не найден"));
     }
 
-    // The "not later than today" rule lives only in the field description, so codegen cannot enforce it.
     private static void checkBirthday(LocalDate birthday) {
         if (birthday.isAfter(LocalDate.now())) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "JSON запроса нарушает ограничения модели",
