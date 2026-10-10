@@ -166,46 +166,60 @@ const OPS = [
 ].map(([value, ru]) => ({ value, label: `${value}  ${ru}` }));
 
 function createListView(cfg) {
-  const fieldOptions = cfg.fields.map(f => ({ value: f.value, label: `${f.label} (${f.value})` }));
+  const fieldOptions = cfg.fields.map(f => ({ value: f.value, label: f.label }));
   const pageIn = input('1', 4);
   const sizeIn = input('20', 4);
   pageIn.value = '1';
   sizeIn.value = '20';
   const sortRows = h('div', { class: 'rows sorts' });
   const filterRows = h('div', { class: 'rows' });
+  const counter = h('span', { class: 'muted counter' });
   const urlLine = h('code', { class: 'url' });
   const out = h('div');
   const pageInfo = h('span', { class: 'page-info' });
   let current = null;
 
-  function addSort() {
+  const updateCounter = () => {
+    counter.textContent = `${filterRows.children.length} фильтров · ${sortRows.children.length} сортировок`;
+  };
+
+  function addSort(fieldName = cfg.fields[0].value) {
     const field = select(fieldOptions);
-    const dir = select([{ value: 'asc', label: 'по возрастанию' }, { value: 'desc', label: 'по убыванию' }]);
-    const row = h('div', { class: 'row' }, field, dir,
+    field.value = fieldName;
+    const dir = select([{ value: 'asc', label: 'По возрастанию' }, { value: 'desc', label: 'По убыванию' }]);
+    const row = h('div', { class: 'row sort-row' }, field, dir,
       btn('↑', () => row.previousElementSibling && sortRows.insertBefore(row, row.previousElementSibling), 'small'),
       btn('↓', () => row.nextElementSibling && sortRows.insertBefore(row.nextElementSibling, row), 'small'),
-      btn('✕', () => row.remove(), 'small'));
+      btn('✕', () => { row.remove(); updateCounter(); }, 'small'));
     row.param = () => `${field.value},${dir.value}`;
     sortRows.append(row);
+    updateCounter();
+  }
+
+  // The value control follows the field: a list of values for enums, free text otherwise.
+  function valueControl(f) {
+    if (f.values) {
+      const options = Object.entries(f.values).map(([value, ru]) => ({ value, label: value === ru ? value : `${value} (${ru})` }));
+      return select(f.nullable ? [...options, { value: 'null', label: 'null (не задано)' }] : options);
+    }
+    const control = input(f.placeholder || (f.nullable ? 'Значение или null' : 'Значение'), 18);
+    return control;
   }
 
   function addFilter() {
     const field = select(fieldOptions);
     const op = select(OPS);
-    const value = input('значение', 22);
-    const listId = `dl-${cfg.name}-${Math.random().toString(36).slice(2)}`;
-    const datalist = h('datalist', { id: listId });
-    const sync = () => {
-      const f = cfg.fields.find(x => x.value === field.value);
-      datalist.replaceChildren(...(f.values || []).map(v => h('option', { value: v })));
-      value.setAttribute('list', listId);
-      value.placeholder = f.placeholder || 'значение';
-    };
-    field.addEventListener('change', sync);
-    sync();
-    const row = h('div', { class: 'row' }, field, op, value, datalist, btn('✕', () => row.remove(), 'small'));
+    let value = valueControl(cfg.fields[0]);
+    field.addEventListener('change', () => {
+      const next = valueControl(cfg.fields.find(x => x.value === field.value));
+      value.replaceWith(next);
+      value = next;
+    });
+    const row = h('div', { class: 'row filter-row' }, field, op, value,
+      btn('✕', () => { row.remove(); updateCounter(); }, 'small'));
     row.param = () => `${field.value}${op.value}${value.value}`;
     filterRows.append(row);
+    updateCounter();
   }
 
   function buildUrl() {
@@ -251,16 +265,31 @@ function createListView(cfg) {
     load();
   };
 
+  const reset = () => {
+    sortRows.replaceChildren();
+    filterRows.replaceChildren();
+    addSort();
+    pageIn.value = '1';
+    sizeIn.value = '20';
+    load();
+  };
+  addSort();
+
   const element = h('div', null,
-    h('div', { class: 'query' },
-      h('div', { class: 'qblock' }, h('h4', { text: 'Сортировка (порядок уровней важен)' }), sortRows,
-        btn('+ уровень сортировки', addSort, 'small')),
-      h('div', { class: 'qblock' }, h('h4', { text: 'Фильтры (объединяются через И)' }), filterRows,
-        btn('+ фильтр', addFilter, 'small'))),
+    h('details', { class: 'query' },
+      h('summary', null, h('strong', { text: 'Фильтры и сортировка' }), ' ', counter),
+      h('div', { class: 'qblock' }, h('h4', { text: 'Фильтры · все условия через И' }), filterRows,
+        btn('+ Фильтр', addFilter, 'small')),
+      h('div', { class: 'qblock' }, h('h4', { text: 'Сортировка · приоритет сверху вниз' }), sortRows,
+        btn('+ Сортировка', () => addSort(), 'small')),
+      h('p', { class: 'muted hint', text: 'Фильтровать и сортировать можно по любому полю. «содержит» ищет подстроку '
+        + 'без учёта регистра. Для полей, которые могут быть не заданы, «равно null» и «не равно null» проверяют '
+        + 'наличие значения. Даты: ГГГГ-ММ-ДД или ГГГГ-ММ-ДДTчч:мм:ссZ.' }),
+      h('div', { class: 'toolbar' }, btn('Применить', () => { pageIn.value = '1'; load(); }, 'primary'),
+        btn('Сбросить', reset))),
     h('div', { class: 'toolbar' },
       h('label', null, 'Страница ', pageIn), h('label', null, 'Размер ', sizeIn),
-      btn('Показать', load, 'primary'),
-      btn('Сбросить', () => { sortRows.replaceChildren(); filterRows.replaceChildren(); pageIn.value = '1'; sizeIn.value = '20'; load(); })),
+      btn('Показать', load, 'primary')),
     h('p', null, urlLine),
     out,
     h('div', { class: 'pager' }, btn('← Назад', () => go(-1)), pageInfo, btn('Вперёд →', () => go(1))));

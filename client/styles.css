@@ -40,13 +40,19 @@ button.small { padding: 2px 8px; font-size: 13px; }
 button.link { border: 0; background: none; color: #2f6fde; text-decoration: underline; }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-.query { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.query { border: 1px solid #dde1e7; border-radius: 6px; padding: 8px 12px; background: #fafbfc; margin-bottom: 8px; }
+.query summary { cursor: pointer; padding: 4px 0; }
+.query .counter { font-size: 13px; margin-left: 6px; }
+.query .qblock { margin-top: 12px; }
 .query h4 { margin: 0 0 6px; font-size: 13px; color: #57606a; font-weight: 600; }
+.query .hint { font-size: 13px; margin: 10px 0 0; }
 .rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
 .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.filter-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.5fr) auto; }
+.sort-row { display: grid; grid-template-columns: 18px minmax(0, 2fr) minmax(0, 1.3fr) auto auto auto; }
+.filter-row > *, .sort-row > select { width: 100%; }
 .sorts { counter-reset: lvl; }
-.sorts .row::before { counter-increment: lvl; content: counter(lvl) "."; width: 18px; color: #57606a; }
-@media (max-width: 900px) { .query { grid-template-columns: 1fr; } }
+.sorts .row::before { counter-increment: lvl; content: counter(lvl) "."; color: #57606a; }
 
 .url { display: block; font-size: 12px; color: #57606a; word-break: break-all; }
 .pager { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
