@@ -1,0 +1,14 @@
+<Server port="SHUTDOWN_PORT" shutdown="SHUTDOWN">
+  <Service name="Catalina">
+    <Connector port="HTTPS_PORT" protocol="org.apache.coyote.http11.Http11NioProtocol"
+               SSLEnabled="true" scheme="https" secure="true" maxThreads="50">
+      <SSLHostConfig>
+        <Certificate certificateKeystoreFile="conf/keystore.p12" certificateKeystorePassword="soa-lab2-tls"
+                     certificateKeystoreType="PKCS12"/>
+      </SSLHostConfig>
+    </Connector>
+    <Engine name="Catalina" defaultHost="localhost">
+      <Host name="localhost" appBase="webapps" unpackWARs="false" autoDeploy="false"/>
+    </Engine>
+  </Service>
+</Server>
