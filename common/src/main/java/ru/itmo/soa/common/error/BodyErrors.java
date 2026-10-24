@@ -68,7 +68,7 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
     private Validator validator;
 
     private static Object record(JsonParser p, Class<?> type, String code, Object... args) {
-        String field = p.getParsingContext().pathAsPointer().toString().substring(1).replace('/', '.');
+        String field = p.getParsingContext().pathAsPointer().toString().replaceFirst("^/", "").replace('/', '.');
         ERRORS.get().add(Violation.of(field, code, args));
         return type.isEnum() ? type.getEnumConstants()[0] : PLACEHOLDERS.get(type);
     }
