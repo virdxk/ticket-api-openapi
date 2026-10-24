@@ -1,32 +1,20 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ResourceTab } from './lib.jsx';
-import { tickets, persons, bookings } from './resources.jsx';
+import { Resource } from './Resource.jsx';
+import { resources } from './resources.js';
 import './styles.css';
 
-const TABS = [
-  { id: 'tickets', title: 'Билеты', cfg: tickets },
-  { id: 'persons', title: 'Люди', cfg: persons },
-  { id: 'bookings', title: 'Бронирования', cfg: bookings },
-];
-
 function App() {
-  const [hash, setHash] = useState(location.hash);
-  useEffect(() => {
-    const sync = () => setHash(location.hash);
-    window.addEventListener('hashchange', sync);
-    return () => window.removeEventListener('hashchange', sync);
-  }, []);
-  const active = (TABS.find(t => `#${t.id}` === hash) || TABS[0]).id;
+  const [tab, setTab] = useState(0);
   return (
     <>
-      {createPortal(TABS.map(t => (
-        <button key={t.id} type="button" className={t.id === active ? 'tab active' : 'tab'} onClick={() => { location.hash = t.id; }}>{t.title}</button>
-      )), document.getElementById('tabs'))}
-      {TABS.map(t => <div key={t.id} hidden={t.id !== active}><ResourceTab cfg={t.cfg} active={t.id === active} /></div>)}
+      <h1>Билеты, люди, бронирования</h1>
+      <nav>
+        {resources.map((r, i) => <button key={r.title} disabled={i === tab} onClick={() => setTab(i)}>{r.title}</button>)}
+      </nav>
+      <Resource key={tab} cfg={resources[tab]} />
     </>
   );
 }
 
-createRoot(document.getElementById('main')).render(<App />);
+createRoot(document.getElementById('root')).render(<App />);
