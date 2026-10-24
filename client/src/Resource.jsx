@@ -122,8 +122,38 @@ function List({ cfg }) {
         load();
     }, []);
 
-    const update = (list, setList, i, key, value) =>
+    function update(list, setList, i, key, value) {
         setList(list.map((x, j) => (j === i ? { ...x, [key]: value } : x)));
+    }
+
+    function show() {
+        load(1);
+    }
+
+    function previousPage() {
+        load(result.data.page - 1);
+    }
+
+    function nextPage() {
+        load(result.data.page + 1);
+    }
+
+    function addFilter() {
+        setFilters([...filters, { field: 'id', op: '=', value: '' }]);
+    }
+
+    function removeFilter(i) {
+        setFilters(filters.filter((_, j) => j !== i));
+    }
+
+    function addSort() {
+        setSorts([...sorts, { field: 'id', dir: 'asc' }]);
+    }
+
+    function removeSort(i) {
+        setSorts(sorts.filter((_, j) => j !== i));
+    }
+
     const fieldSelect = (value, onChange) => (
         <select value={value} onChange={(e) => onChange(e.target.value)}>
             {cfg.filterFields.map((f) => (
@@ -153,12 +183,10 @@ function List({ cfg }) {
                         placeholder="значение или null"
                         onChange={(e) => update(filters, setFilters, i, 'value', e.target.value)}
                     />
-                    <button onClick={() => setFilters(filters.filter((_, j) => j !== i))}>x</button>
+                    <button onClick={() => removeFilter(i)}>x</button>
                 </div>
             ))}
-            <button onClick={() => setFilters([...filters, { field: 'id', op: '=', value: '' }])}>
-                + фильтр
-            </button>
+            <button onClick={addFilter}>+ фильтр</button>
             <h3>Сортировка (по порядку приоритета)</h3>
             {sorts.map((s, i) => (
                 <div key={i}>
@@ -167,13 +195,13 @@ function List({ cfg }) {
                         <option value="asc">по возрастанию</option>
                         <option value="desc">по убыванию</option>
                     </select>
-                    <button onClick={() => setSorts(sorts.filter((_, j) => j !== i))}>x</button>
+                    <button onClick={() => removeSort(i)}>x</button>
                 </div>
             ))}
-            <button onClick={() => setSorts([...sorts, { field: 'id', dir: 'asc' }])}>+ сортировка</button>
+            <button onClick={addSort}>+ сортировка</button>
             <p>
                 Размер страницы <input value={size} onChange={(e) => setSize(e.target.value)} />
-                <button onClick={() => load(1)}>Показать</button>
+                <button onClick={show}>Показать</button>
             </p>
             {result && !result.ok && <Result result={result} />}
             {data && (
@@ -197,11 +225,11 @@ function List({ cfg }) {
                         </tbody>
                     </table>
                     <p>
-                        <button disabled={data.page <= 1} onClick={() => load(data.page - 1)}>
+                        <button disabled={data.page <= 1} onClick={previousPage}>
                             Назад
                         </button>{' '}
                         Страница {data.page} из {data.totalPages}, всего {data.totalElements}{' '}
-                        <button disabled={data.page >= data.totalPages} onClick={() => load(data.page + 1)}>
+                        <button disabled={data.page >= data.totalPages} onClick={nextPage}>
                             Вперёд
                         </button>
                     </p>
@@ -221,28 +249,38 @@ function Item({ cfg }) {
     const [result, setResult] = useState(null);
     const url = `${cfg.url}/${id.trim()}`;
 
-    const run = async (title, ...args) => setResult({ ...(await request(...args)), title });
+    async function run(title, ...args) {
+        setResult({ ...(await request(...args)), title });
+    }
+
+    function get() {
+        run('Найден', 'GET', url);
+    }
+
+    function remove() {
+        run('Удалён', 'DELETE', url);
+    }
+
+    function update() {
+        run('Изменён', 'PATCH', url, buildBody(cfg.fields, values), 'application/merge-patch+json');
+    }
+
+    function create() {
+        run('Создан', 'POST', cfg.url, buildBody(cfg.fields, values));
+    }
+
+    function setValue(name, value) {
+        setValues({ ...values, [name]: value });
+    }
 
     return (
         <section>
             <h2>Элемент</h2>
             <p>
                 id <input value={id} onChange={(e) => setId(e.target.value)} />
-                <button onClick={() => run('Найден', 'GET', url)}>Получить</button>
-                <button onClick={() => run('Удалён', 'DELETE', url)}>Удалить</button>
-                <button
-                    onClick={() =>
-                        run(
-                            'Изменён',
-                            'PATCH',
-                            url,
-                            buildBody(cfg.fields, values),
-                            'application/merge-patch+json',
-                        )
-                    }
-                >
-                    Изменить (PATCH)
-                </button>
+                <button onClick={get}>Получить</button>
+                <button onClick={remove}>Удалить</button>
+                <button onClick={update}>Изменить (PATCH)</button>
             </p>
             {cfg.fields.map((f) => (
                 <p key={f.name}>
@@ -250,7 +288,7 @@ function Item({ cfg }) {
                     {f.values ? (
                         <select
                             value={values[f.name] ?? ''}
-                            onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+                            onChange={(e) => setValue(f.name, e.target.value)}
                         >
                             <option value="">-</option>
                             {f.values.map((v) => (
@@ -261,15 +299,13 @@ function Item({ cfg }) {
                     ) : (
                         <input
                             value={values[f.name] ?? ''}
-                            onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+                            onChange={(e) => setValue(f.name, e.target.value)}
                         />
                     )}
                 </p>
             ))}
             <p className="hint">Пустые поля не отправляются, значение null очищает поле.</p>
-            <button onClick={() => run('Создан', 'POST', cfg.url, buildBody(cfg.fields, values))}>
-                Создать (POST)
-            </button>
+            <button onClick={create}>Создать (POST)</button>
             <Result result={result} />
         </section>
     );
@@ -278,11 +314,21 @@ function Item({ cfg }) {
 function Action({ action }) {
     const [values, setValues] = useState(action.inputs.map((i) => (i.values ? i.values[0] : '')));
     const [result, setResult] = useState(null);
+
+    function setValue(i, value) {
+        setValues(values.map((v, j) => (j === i ? value : v)));
+    }
+
+    async function execute() {
+        const response = await request(action.method, action.path(values.map((v) => v.trim())));
+        setResult({ ...response, title: 'Выполнено' });
+    }
+
     return (
         <section>
             <h2>{action.title}</h2>
             {action.inputs.map((input, i) => {
-                const set = (e) => setValues(values.map((v, j) => (j === i ? e.target.value : v)));
+                const set = (e) => setValue(i, e.target.value);
                 return (
                     <span key={i}>
                         {input.label}{' '}
@@ -298,16 +344,7 @@ function Action({ action }) {
                     </span>
                 );
             })}
-            <button
-                onClick={async () =>
-                    setResult({
-                        ...(await request(action.method, action.path(values.map((v) => v.trim())))),
-                        title: 'Выполнено',
-                    })
-                }
-            >
-                Выполнить
-            </button>
+            <button onClick={execute}>Выполнить</button>
             <Result result={result} />
         </section>
     );
