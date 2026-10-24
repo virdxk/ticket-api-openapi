@@ -1,9 +1,7 @@
 package ru.itmo.soa.common.error;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidNullException;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,24 +9,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.http.HttpHeaders;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import ru.itmo.soa.common.error.ApiException.Violation;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
-public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
@@ -36,97 +34,69 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     private MessageSource messages;
 
     @ExceptionHandler(ApiException.class)
-    public ResponseEntity<Object> handleApi(ApiException ex) {
-        return respond(ex.getStatus(), ex.getError(), ex.getDetails());
+    public ResponseEntity<ApiError> handleApi(ApiException ex) {
+        List<ApiError.Detail> details = ex.getDetails().stream()
+                .map(v -> new ApiError.Detail(v.field(), text(v.message())))
+                .distinct()
+                .toList();
+        return ResponseEntity.status(ex.getStatus()).body(ApiError.of(text(ex.getError()), details));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleInvalidBody(MethodArgumentNotValidException ex) {
+        return handleApi(ApiException.invalid(ex.getFieldErrors().stream()
+                .map(e -> Violation.text(e.getField(), e.getDefaultMessage()))
+                .toList()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        if (ex.getCause() instanceof InvalidNullException e) {
+            return handleApi(ApiException.invalid(List.of(Violation.of(path(e), "error.field.null"))));
+        }
+        return handleApi(ApiException.badRequest("error.body.malformed"));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
+    public ResponseEntity<ApiError> handleInvalidParameter(ConstraintViolationException ex) {
         String errors = ex.getConstraintViolations().stream()
-                .map(v -> parameterName(v.getPropertyPath().toString()) + ": " + v.getMessage())
+                .map(v -> v.getPropertyPath().toString().replaceFirst("^[^.]*\\.", "") + ": " + v.getMessage())
                 .sorted()
                 .collect(Collectors.joining("; "));
-        return respond(HttpStatus.BAD_REQUEST, Violation.message("error.param.constraints", errors), List.of());
+        return handleApi(ApiException.badRequest("error.param.constraints", errors));
     }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        return respond(HttpStatus.BAD_REQUEST,
-                Violation.message("error.param.value", ex.getName(), ex.getValue()), List.of());
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleUnexpected(Exception ex) {
-        log.error("Unexpected error", ex);
-        return respond(HttpStatus.INTERNAL_SERVER_ERROR, Violation.message("error.internal"), List.of());
-    }
-
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        List<Violation> details = ex.getBindingResult().getFieldErrors().stream()
-                .map(e -> Violation.text(e.getField(), e.getDefaultMessage()))
-                .distinct()
-                .toList();
-        return handleApi(ApiException.invalid(details));
-    }
-
-    @Override
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
-            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        if (ex.getCause() instanceof MismatchedInputException mismatch && !mismatch.getPath().isEmpty()) {
-            String field = mismatch.getPath().stream()
-                    .map(r -> r.getFieldName() != null ? r.getFieldName() : String.valueOf(r.getIndex()))
-                    .collect(Collectors.joining("."));
-            return handleApi(ApiException.invalid(List.of(mismatch(field, mismatch))));
-        }
-        return respond(HttpStatus.BAD_REQUEST, Violation.message("error.body.malformed"), List.of());
-    }
-
-    @Override
-    protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
-            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiError> handleInvalidParameter(HandlerMethodValidationException ex) {
         String errors = ex.getParameterValidationResults().stream()
                 .flatMap(r -> r.getResolvableErrors().stream()
                         .map(e -> r.getMethodParameter().getParameterName() + ": " + e.getDefaultMessage()))
                 .collect(Collectors.joining("; "));
-        return respond(HttpStatus.BAD_REQUEST, Violation.message("error.param.constraints", errors), List.of());
+        return handleApi(ApiException.badRequest("error.param.constraints", errors));
     }
 
-    @Override
-    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
-            HttpStatusCode statusCode, WebRequest request) {
-        return respond(statusCode, Violation.message("error.http." + statusCode.value()), List.of());
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleWrongParameter(MethodArgumentTypeMismatchException ex) {
+        return handleApi(ApiException.badRequest("error.param.value", ex.getName(), ex.getValue()));
     }
 
-    private static Violation mismatch(String field, MismatchedInputException ex) {
-        if (ex instanceof UnrecognizedPropertyException) {
-            return Violation.of(field, "error.field.unknown");
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleOther(Exception ex) {
+        if (ex instanceof ErrorResponse response) {
+            HttpStatusCode status = response.getStatusCode();
+            MessageSourceResolvable message = new DefaultMessageSourceResolvable(
+                    new String[]{"error.http." + status.value()}, null, ex.getMessage());
+            return ResponseEntity.status(status).body(ApiError.of(text(message), List.of()));
         }
-        if (ex instanceof InvalidNullException) {
-            return Violation.of(field, "error.field.null");
-        }
-        if (ex instanceof InvalidFormatException format) {
-            return Violation.of(field, "error.field.value", format.getValue());
-        }
-        return Violation.of(field, "error.field.type");
-    }
-
-    private static String parameterName(String propertyPath) {
-        int dot = propertyPath.indexOf('.');
-        return dot < 0 ? propertyPath : propertyPath.substring(dot + 1);
+        log.error("Unexpected error", ex);
+        return handleApi(new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "error.internal"));
     }
 
     private String text(MessageSourceResolvable message) {
         return messages.getMessage(message, LocaleContextHolder.getLocale());
     }
 
-    private ResponseEntity<Object> respond(HttpStatusCode status, MessageSourceResolvable message,
-            List<Violation> details) {
-        List<ApiError.Detail> resolved = details.stream()
-                .map(v -> new ApiError.Detail(v.field(), text(v.message())))
-                .distinct()
-                .toList();
-        return ResponseEntity.status(status).body(ApiError.of(text(message), resolved));
+    private static String path(JsonMappingException ex) {
+        return ex.getPath().stream().map(JsonMappingException.Reference::getFieldName).collect(Collectors.joining("."));
     }
 }

@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.itmo.soa.common.error.ApiException;
-import ru.itmo.soa.common.error.Violation;
+import ru.itmo.soa.common.error.ApiException.Violation;
 import ru.itmo.soa.common.repository.PageQuery;
 import ru.itmo.soa.person.api.model.Person;
 import ru.itmo.soa.person.api.model.PersonCreate;
