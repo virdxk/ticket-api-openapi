@@ -12,6 +12,6 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addFormatters(FormatterRegistry registry) {
-        registry.addConverter(String.class, List.class, (Converter<String, List>) List::of);
+        registry.addConverter(String.class, List.class, (Converter<String, List<String>>) List::of);
     }
 }

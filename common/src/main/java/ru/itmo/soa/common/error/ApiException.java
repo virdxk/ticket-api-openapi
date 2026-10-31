@@ -9,6 +9,8 @@ import java.util.List;
 
 public class ApiException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public record Violation(String field, MessageSourceResolvable message) {
 
         public static Violation of(String field, String code, Object... args) {
