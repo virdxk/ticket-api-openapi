@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { request } from './api.js';
 import { buildBody } from './form-body.js';
 
@@ -67,24 +67,31 @@ function Result({ result }) {
     );
 }
 
-function List({ cfg }) {
+function List({ cfg, reloadKey }) {
     const [filters, setFilters] = useState([]);
     const [sorts, setSorts] = useState([]);
     const [page, setPage] = useState(1);
     const [size, setSize] = useState(20);
     const [result, setResult] = useState(null);
+    const abortRef = useRef(null);
 
     async function load(p = page) {
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
         const params = new URLSearchParams({ page: p, size });
         sorts.forEach((s) => params.append('sort', `${s.field},${s.dir}`));
         filters.forEach((f) => params.append('filter', `${f.field}${f.op}${f.value}`));
         setPage(p);
-        setResult(await request('GET', `${cfg.url}?${params}`));
+        const response = await request('GET', `${cfg.url}?${params}`, undefined, 'application/json', controller.signal);
+        if (!response.aborted) {
+            setResult(response);
+        }
     }
 
     useEffect(() => {
         load();
-    }, []);
+    }, [reloadKey]);
 
     function update(list, setList, i, key, value) {
         setList(list.map((x, j) => (j === i ? { ...x, [key]: value } : x)));
@@ -207,30 +214,52 @@ function List({ cfg }) {
     );
 }
 
-function Item({ cfg }) {
+function Item({ cfg, onChanged }) {
     const [id, setId] = useState('');
     const [values, setValues] = useState({});
     const [result, setResult] = useState(null);
-    const url = `${cfg.url}/${id.trim()}`;
+    const [pending, setPending] = useState(null);
 
-    async function run(title, ...args) {
-        setResult({ ...(await request(...args)), title });
+    async function run(title, key, makeCall) {
+        setPending(key);
+        try {
+            const response = await makeCall();
+            setResult({ ...response, title });
+            if (response.ok && key !== 'get') {
+                onChanged();
+            }
+        } finally {
+            setPending(null);
+        }
+    }
+
+    function withId(action) {
+        const clean = id.trim();
+        if (!/^\d+$/.test(clean)) {
+            setResult({ ok: false, status: 0, data: { message: 'id должен быть натуральным числом' } });
+            return;
+        }
+        action(`${cfg.url}/${clean}`);
     }
 
     function get() {
-        run('Найден', 'GET', url);
+        withId((url) => run('Найден', 'get', () => request('GET', url)));
     }
 
     function remove() {
-        run('Удалён', 'DELETE', url);
+        withId((url) => run('Удалён', 'remove', () => request('DELETE', url)));
     }
 
     function update() {
-        run('Изменён', 'PATCH', url, buildBody(cfg.fields, values), 'application/merge-patch+json');
+        withId((url) =>
+            run('Изменён', 'update', () =>
+                request('PATCH', url, buildBody(cfg.fields, values), 'application/merge-patch+json'),
+            ),
+        );
     }
 
     function create() {
-        run('Создан', 'POST', cfg.url, buildBody(cfg.fields, values));
+        run('Создан', 'create', () => request('POST', cfg.url, buildBody(cfg.fields, values)));
     }
 
     function setValue(name, value) {
@@ -242,9 +271,9 @@ function Item({ cfg }) {
             <h2>Элемент</h2>
             <p>
                 id <input value={id} onChange={(e) => setId(e.target.value)} />
-                <button onClick={get}>Получить</button>
-                <button onClick={remove}>Удалить</button>
-                <button onClick={update}>Изменить (PATCH)</button>
+                <button disabled={pending !== null} onClick={get}>Получить</button>
+                <button disabled={pending !== null} onClick={remove}>Удалить</button>
+                <button disabled={pending !== null} onClick={update}>Изменить (PATCH)</button>
             </p>
             {cfg.fields.map((f) => (
                 <p key={f.name}>
@@ -269,23 +298,33 @@ function Item({ cfg }) {
                 </p>
             ))}
             <p className="hint">Пустые поля не отправляются, значение null очищает поле.</p>
-            <button onClick={create}>Создать (POST)</button>
+            <button disabled={pending !== null} onClick={create}>Создать (POST)</button>
             <Result result={result} />
         </section>
     );
 }
 
-function Action({ action }) {
+function Action({ action, onChanged }) {
     const [values, setValues] = useState(action.inputs.map((i) => (i.values ? i.values[0] : '')));
     const [result, setResult] = useState(null);
+    const [pending, setPending] = useState(false);
 
     function setValue(i, value) {
         setValues(values.map((v, j) => (j === i ? value : v)));
     }
 
     async function execute() {
-        const response = await request(action.method, action.path(values.map((v) => v.trim())));
-        setResult({ ...response, title: 'Выполнено' });
+        setPending(true);
+        try {
+            const path = action.path(values.map((v) => encodeURIComponent(v.trim())));
+            const response = await request(action.method, path);
+            setResult({ ...response, title: 'Выполнено' });
+            if (response.ok) {
+                onChanged();
+            }
+        } finally {
+            setPending(false);
+        }
     }
 
     return (
@@ -308,19 +347,21 @@ function Action({ action }) {
                     </span>
                 );
             })}
-            <button onClick={execute}>Выполнить</button>
+            <button disabled={pending} onClick={execute}>Выполнить</button>
             <Result result={result} />
         </section>
     );
 }
 
 export function Resource({ cfg }) {
+    const [reloadKey, setReloadKey] = useState(0);
+    const onChanged = () => setReloadKey((k) => k + 1);
     return (
         <>
-            <List cfg={cfg} />
-            <Item cfg={cfg} />
+            <List cfg={cfg} reloadKey={reloadKey} />
+            <Item cfg={cfg} onChanged={onChanged} />
             {cfg.actions.map((a) => (
-                <Action key={a.title} action={a} />
+                <Action key={a.title} action={a} onChanged={onChanged} />
             ))}
         </>
     );
