@@ -14,6 +14,7 @@ import ru.itmo.soa.ticket.api.model.TicketType;
 import ru.itmo.soa.ticket.api.model.Venue;
 import ru.itmo.soa.ticket.api.model.VenueInput;
 import ru.itmo.soa.ticket.entity.TicketEntity;
+import ru.itmo.soa.ticket.entity.VenueEntity;
 import ru.itmo.soa.ticket.repository.TicketRepository;
 
 import java.time.OffsetDateTime;
@@ -97,11 +98,11 @@ public class TicketService {
         return c;
     }
 
-    private static TicketEntity.Venue venue(VenueInput dto) {
+    private static VenueEntity venue(VenueInput dto) {
         if (dto == null) {
             return null;
         }
-        TicketEntity.Venue v = new TicketEntity.Venue();
+        VenueEntity v = new VenueEntity();
         v.name = dto.getName();
         v.capacity = dto.getCapacity();
         v.type = dto.getType();

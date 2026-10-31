@@ -14,7 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import ru.itmo.soa.ticket.api.model.TicketType;
-import ru.itmo.soa.ticket.api.model.VenueType;
 
 import java.time.OffsetDateTime;
 
@@ -45,7 +44,7 @@ public class TicketEntity {
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "venue_id")
-    public Venue venue;
+    public VenueEntity venue;
 
     @Embeddable
     public static class Coordinates {
@@ -53,20 +52,5 @@ public class TicketEntity {
         public Float x;
         @Column(name = "y", nullable = false)
         public Double y;
-    }
-
-    @Entity
-    @Table(name = "soa_venue")
-    public static class Venue {
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        public Integer id;
-        @Column(nullable = false)
-        public String name;
-        @Column(nullable = false)
-        public Long capacity;
-        @Enumerated(EnumType.STRING)
-        @Column(nullable = false)
-        public VenueType type;
     }
 }
