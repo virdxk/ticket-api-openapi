@@ -12,6 +12,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.ManagedType;
+import jakarta.persistence.metamodel.SingularAttribute;
 import org.springframework.stereotype.Repository;
 import ru.itmo.soa.common.error.ApiException;
 
@@ -98,6 +99,9 @@ public class PageQuery {
     private void describe(ManagedType<?> type, String prefix, Set<String> fields, Set<String> joins,
             Map<String, Class<?>> types) {
         for (Attribute<?, ?> attribute : type.getAttributes()) {
+            if (attribute instanceof SingularAttribute<?, ?> singular && singular.isVersion()) {
+                continue;
+            }
             String name = prefix + attribute.getName();
             switch (attribute.getPersistentAttributeType()) {
                 case BASIC -> {

@@ -2,6 +2,7 @@ package ru.itmo.soa.common.error;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidNullException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,12 @@ public class ApiExceptionHandler {
         if (ex.getCause() instanceof InvalidNullException e) {
             List<Violation> violations = new ArrayList<>();
             violations.add(Violation.of(path(e), "error.field.null"));
+            violations.addAll(BodyErrors.drain());
+            return handleApi(ApiException.invalid(violations));
+        }
+        if (ex.getCause() instanceof MismatchedInputException e && !e.getPath().isEmpty()) {
+            List<Violation> violations = new ArrayList<>();
+            violations.add(Violation.of(path(e), "error.field.type"));
             violations.addAll(BodyErrors.drain());
             return handleApi(ApiException.invalid(violations));
         }
