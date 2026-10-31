@@ -83,7 +83,7 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
     @Override
     public HttpInputMessage beforeBodyRead(HttpInputMessage message, MethodParameter parameter, Type type,
             Class<? extends HttpMessageConverter<?>> converter) {
-        ERRORS.get().clear();
+        ERRORS.remove();
         return message;
     }
 
@@ -91,6 +91,7 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
     public Object afterBodyRead(Object body, HttpInputMessage message, MethodParameter parameter, Type type,
             Class<? extends HttpMessageConverter<?>> converter) {
         List<Violation> errors = new ArrayList<>(ERRORS.get());
+        ERRORS.remove();
         if (errors.isEmpty()) {
             return body;
         }
