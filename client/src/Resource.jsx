@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { request } from './api.js';
+import { buildBody } from './form-body.js';
 
 const OPS = ['=', '!=', '>', '>=', '<', '<=', '~'];
 const STATUS = {
@@ -9,44 +11,6 @@ const STATUS = {
     500: 'внутренняя ошибка сервера',
     503: 'сервис недоступен',
 };
-
-async function request(method, url, body, contentType = 'application/json') {
-    try {
-        const res = await fetch(url, {
-            method,
-            headers: body === undefined ? {} : { 'Content-Type': contentType },
-            body: body === undefined ? undefined : JSON.stringify(body),
-        });
-        const text = await res.text();
-        let data = null;
-        try {
-            data = text ? JSON.parse(text) : null;
-        } catch {
-            data = text;
-        }
-        return { ok: res.ok, status: res.status, data };
-    } catch (e) {
-        return { ok: false, status: 0, data: { message: `Сервер недоступен: ${e.message}` } };
-    }
-}
-
-function buildBody(fields, values) {
-    const body = {};
-    for (const f of fields) {
-        const raw = (values[f.name] ?? '').trim();
-        if (raw === '') {
-            continue;
-        }
-        const value = raw === 'null' ? null : f.number && !isNaN(raw) ? Number(raw) : raw;
-        const path = f.name.split('.');
-        let target = body;
-        for (const key of path.slice(0, -1)) {
-            target = target[key] ??= {};
-        }
-        target[path.at(-1)] = value;
-    }
-    return body;
-}
 
 function Result({ result }) {
     if (!result) {
