@@ -1,6 +1,5 @@
 package ru.itmo.soa.booking.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -18,8 +17,11 @@ import java.util.List;
 @RestController
 public class BookingController implements BookingsApi, BookingApi {
 
-    @Autowired
-    private BookingService service;
+    private final BookingService service;
+
+    public BookingController(BookingService service) {
+        this.service = service;
+    }
 
     @Override
     public ResponseEntity<Booking> createBooking(BookingCreate body) {

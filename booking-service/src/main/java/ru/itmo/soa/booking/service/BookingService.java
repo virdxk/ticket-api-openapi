@@ -1,6 +1,5 @@
 package ru.itmo.soa.booking.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,14 +31,15 @@ public class BookingService {
 
     private static final Set<String> FIELDS = Set.of("id", "ticketId", "personId", "createdAt");
 
-    @Autowired
-    private BookingRepository repository;
+    private final BookingRepository repository;
+    private final PageQuery pageQuery;
+    private final RemoteServices remote;
 
-    @Autowired
-    private PageQuery pageQuery;
-
-    @Autowired
-    private RemoteServices remote;
+    public BookingService(BookingRepository repository, PageQuery pageQuery, RemoteServices remote) {
+        this.repository = repository;
+        this.pageQuery = pageQuery;
+        this.remote = remote;
+    }
 
     public Booking create(BookingCreate body) {
         remote.getTicket(body.getTicketId());

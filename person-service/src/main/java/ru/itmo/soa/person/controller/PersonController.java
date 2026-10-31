@@ -1,6 +1,5 @@
 package ru.itmo.soa.person.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -16,8 +15,11 @@ import java.util.List;
 @RestController
 public class PersonController implements PersonsApi {
 
-    @Autowired
-    private PersonService service;
+    private final PersonService service;
+
+    public PersonController(PersonService service) {
+        this.service = service;
+    }
 
     @Override
     public ResponseEntity<Person> createPerson(PersonCreate body) {

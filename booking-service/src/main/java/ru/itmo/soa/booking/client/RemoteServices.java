@@ -1,6 +1,5 @@
 package ru.itmo.soa.booking.client;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.http.HttpStatus;
@@ -23,7 +22,6 @@ public class RemoteServices {
     private final TicketsApi tickets;
     private final PersonsApi persons;
 
-    @Autowired
     public RemoteServices(@Value("${ticket-service.url}") String ticketUrl,
                           @Value("${person-service.url}") String personUrl, SslBundles ssl) {
         JdkClientHttpRequestFactory https = new JdkClientHttpRequestFactory(HttpClient.newBuilder()

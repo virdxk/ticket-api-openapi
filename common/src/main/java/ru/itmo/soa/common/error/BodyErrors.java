@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
 import jakarta.validation.Validator;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -64,8 +63,11 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
         }
     };
 
-    @Autowired
-    private Validator validator;
+    private final Validator validator;
+
+    public BodyErrors(Validator validator) {
+        this.validator = validator;
+    }
 
     private static Object record(JsonParser p, Class<?> type, String code, Object... args) {
         String field = p.getParsingContext().pathAsPointer().toString().replaceFirst("^/", "").replace('/', '.');

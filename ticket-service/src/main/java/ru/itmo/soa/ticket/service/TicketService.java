@@ -1,6 +1,5 @@
 package ru.itmo.soa.ticket.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +29,13 @@ public class TicketService {
     private static final Set<String> FIELDS = Set.of("id", "name", "coordinates.x", "coordinates.y", "creationDate",
             "price", "comment", "type", "venue.id", "venue.name", "venue.capacity", "venue.type");
 
-    @Autowired
-    private TicketRepository repository;
+    private final TicketRepository repository;
+    private final PageQuery pageQuery;
 
-    @Autowired
-    private PageQuery pageQuery;
+    public TicketService(TicketRepository repository, PageQuery pageQuery) {
+        this.repository = repository;
+        this.pageQuery = pageQuery;
+    }
 
     public Ticket create(TicketCreate body) {
         TicketEntity e = new TicketEntity();

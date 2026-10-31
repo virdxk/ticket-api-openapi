@@ -1,6 +1,5 @@
 package ru.itmo.soa.ticket.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -18,8 +17,11 @@ import java.util.List;
 @RestController
 public class TicketController implements TicketsApi, TicketOperationsApi {
 
-    @Autowired
-    private TicketService service;
+    private final TicketService service;
+
+    public TicketController(TicketService service) {
+        this.service = service;
+    }
 
     @Override
     public ResponseEntity<Ticket> createTicket(TicketCreate body) {

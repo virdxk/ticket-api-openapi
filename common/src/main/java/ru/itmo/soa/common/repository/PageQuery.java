@@ -10,7 +10,6 @@ import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import ru.itmo.soa.common.error.ApiException;
 
@@ -36,8 +35,11 @@ public class PageQuery {
     public record Result<T>(List<T> items, long totalElements, int totalPages) {
     }
 
-    @Autowired
-    private EntityManager em;
+    private final EntityManager em;
+
+    public PageQuery(EntityManager em) {
+        this.em = em;
+    }
 
     public <T> Result<T> find(Class<T> entity, Set<String> fields, Set<String> joins,
             int page, int size, List<String> sort, List<String> filter) {

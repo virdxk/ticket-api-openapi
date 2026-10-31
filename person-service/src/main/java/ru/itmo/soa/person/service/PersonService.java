@@ -1,6 +1,5 @@
 package ru.itmo.soa.person.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +23,13 @@ public class PersonService {
 
     private static final Set<String> FIELDS = Set.of("id", "firstName", "lastName", "birthday");
 
-    @Autowired
-    private PersonRepository repository;
+    private final PersonRepository repository;
+    private final PageQuery pageQuery;
 
-    @Autowired
-    private PageQuery pageQuery;
+    public PersonService(PersonRepository repository, PageQuery pageQuery) {
+        this.repository = repository;
+        this.pageQuery = pageQuery;
+    }
 
     public Person create(PersonCreate body) {
         checkBirthday(body.getBirthday());
