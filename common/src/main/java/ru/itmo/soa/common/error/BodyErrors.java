@@ -69,6 +69,12 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
         this.validator = validator;
     }
 
+    public static List<Violation> drain() {
+        List<Violation> errors = new ArrayList<>(ERRORS.get());
+        ERRORS.remove();
+        return errors;
+    }
+
     private static Object record(JsonParser p, Class<?> type, String code, Object... args) {
         String field = p.getParsingContext().pathAsPointer().toString().replaceFirst("^/", "").replace('/', '.');
         ERRORS.get().add(Violation.of(field, code, args));
@@ -90,8 +96,7 @@ public class BodyErrors extends RequestBodyAdviceAdapter {
     @Override
     public Object afterBodyRead(Object body, HttpInputMessage message, MethodParameter parameter, Type type,
             Class<? extends HttpMessageConverter<?>> converter) {
-        List<Violation> errors = new ArrayList<>(ERRORS.get());
-        ERRORS.remove();
+        List<Violation> errors = drain();
         if (errors.isEmpty()) {
             return body;
         }

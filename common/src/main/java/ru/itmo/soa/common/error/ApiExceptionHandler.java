@@ -21,6 +21,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import ru.itmo.soa.common.error.ApiException.Violation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,8 +55,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException ex) {
         if (ex.getCause() instanceof InvalidNullException e) {
-            return handleApi(ApiException.invalid(List.of(Violation.of(path(e), "error.field.null"))));
+            List<Violation> violations = new ArrayList<>();
+            violations.add(Violation.of(path(e), "error.field.null"));
+            violations.addAll(BodyErrors.drain());
+            return handleApi(ApiException.invalid(violations));
         }
+        BodyErrors.drain();
         return handleApi(ApiException.badRequest("error.body.malformed"));
     }
 
@@ -88,7 +93,7 @@ public class ApiExceptionHandler {
             HttpStatusCode status = response.getStatusCode();
             MessageSourceResolvable message = new DefaultMessageSourceResolvable(
                     new String[]{"error.http." + status.value()}, null, ex.getMessage());
-            return ResponseEntity.status(status).body(ApiError.of(text(message), List.of()));
+            return ResponseEntity.status(status).headers(response.getHeaders()).body(ApiError.of(text(message), List.of()));
         }
         log.error("Unexpected error", ex);
         return handleApi(new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "error.internal"));
