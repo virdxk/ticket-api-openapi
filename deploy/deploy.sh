@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 H=s412939@helios.cs.ifmo.ru
 
 mvn clean package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="$PWD/target/lib" -DskipTests
+export VITE_API_BASE=${VITE_API_BASE:-https://se.ifmo.ru/~s412939}
 if [ -f client/package-lock.json ]; then
     (cd client && npm ci && npm run build)
 else
