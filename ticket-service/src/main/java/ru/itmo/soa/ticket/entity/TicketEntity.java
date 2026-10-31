@@ -29,7 +29,7 @@ public class TicketEntity {
     @Version
     public long version;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     public String name;
 
     @Embedded
