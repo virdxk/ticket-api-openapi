@@ -14,6 +14,7 @@ import ru.itmo.soa.person.entity.PersonEntity;
 import ru.itmo.soa.person.repository.PersonRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -70,7 +71,7 @@ public class PersonService {
     }
 
     private static void checkBirthday(LocalDate birthday) {
-        if (birthday.isAfter(LocalDate.now())) {
+        if (birthday.isAfter(LocalDate.now(ZoneOffset.UTC))) {
             throw ApiException.invalid(List.of(Violation.of("birthday", "person.birthday.future")));
         }
     }
