@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -143,7 +144,7 @@ public class PageQuery {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Predicate predicate(CriteriaBuilder cb, Path<?> path, String field, String op, String raw) {
         if (op.equals("~")) {
-            String pattern = "%" + raw.toLowerCase()
+            String pattern = "%" + raw.toLowerCase(Locale.ROOT)
                     .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
             return cb.like(cb.lower(path.as(String.class)), pattern, '\\');
         }
