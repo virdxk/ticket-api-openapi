@@ -1,4 +1,4 @@
-const BASE = 'https://se.ifmo.ru/~s412939';
+const BASE = import.meta.env.VITE_API_BASE ?? '';
 const TICKET_TYPES = ['VIP', 'USUAL', 'BUDGETARY', 'CHEAP'];
 const VENUE_TYPES = ['PUB', 'BAR', 'OPEN_AREA', 'MALL', 'STADIUM'];
 
@@ -8,6 +8,14 @@ function show(value) {
 
 function date(value) {
     return value ? new Date(value).toLocaleString('ru-RU') : '-';
+}
+
+function birthday(value) {
+    if (!value) {
+        return '-';
+    }
+    const [y, m, d] = String(value).split('-');
+    return `${d}.${m}.${y}`;
 }
 
 function venue(v) {
@@ -134,7 +142,7 @@ export const resources = [
             ['id', (p) => p.id],
             ['Имя', (p) => p.firstName],
             ['Фамилия', (p) => p.lastName],
-            ['Дата рождения', (p) => new Date(p.birthday).toLocaleDateString('ru-RU')],
+            ['Дата рождения', (p) => birthday(p.birthday)],
         ],
         actions: [],
     },

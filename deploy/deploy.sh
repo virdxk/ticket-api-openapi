@@ -4,7 +4,12 @@ cd "$(dirname "$0")/.."
 H=s412939@helios.cs.ifmo.ru
 
 mvn clean package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="$PWD/target/lib" -DskipTests
-(cd client && npm install && npm run build)
+export VITE_API_BASE=${VITE_API_BASE:-https://se.ifmo.ru/~s412939}
+if [ -f client/package-lock.json ]; then
+    (cd client && npm ci && npm run build)
+else
+    (cd client && npm install && npm run build)
+fi
 
 rsync -az --delete -e 'ssh -p 2222' target/lib/ $H:soa/lib/
 rsync -az -e 'ssh -p 2222' */target/*-service.war deploy/helios.sh deploy/tomcat $H:soa/dist/

@@ -25,6 +25,10 @@ label {
     width: 240px;
 }
 
+label.inline {
+    width: auto;
+}
+
 .error {
     color: #b00020;
 }
