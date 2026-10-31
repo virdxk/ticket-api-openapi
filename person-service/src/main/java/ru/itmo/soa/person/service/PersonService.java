@@ -34,7 +34,7 @@ public class PersonService {
         e.firstName = body.getFirstName();
         e.lastName = body.getLastName();
         e.birthday = body.getBirthday();
-        return toDto(repository.saveAndFlush(e));
+        return toDto(repository.save(e));
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +58,7 @@ public class PersonService {
         if (patch.getFirstName() != null) e.firstName = patch.getFirstName();
         if (patch.getLastName() != null) e.lastName = patch.getLastName();
         if (patch.getBirthday() != null) e.birthday = patch.getBirthday();
-        return toDto(repository.saveAndFlush(e));
+        return toDto(e);
     }
 
     public void delete(Long id) {

@@ -43,7 +43,7 @@ public class TicketService {
         e.comment = body.getComment();
         e.type = body.getType().orElse(null);
         e.venue = venue(body.getVenue().orElse(null));
-        return toDto(repository.saveAndFlush(e));
+        return toDto(repository.save(e));
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +70,7 @@ public class TicketService {
         if (patch.getPrice().isPresent()) e.price = patch.getPrice().get();
         if (patch.getType().isPresent()) e.type = patch.getType().get();
         if (patch.getVenue().isPresent()) e.venue = venue(patch.getVenue().get());
-        return toDto(repository.saveAndFlush(e));
+        return toDto(e);
     }
 
     public void delete(Long id) {
