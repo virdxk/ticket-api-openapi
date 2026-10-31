@@ -77,18 +77,6 @@
                             <apiPackage>ru.itmo.soa.booking.api</apiPackage>
                             <modelPackage>ru.itmo.soa.booking.api.model</modelPackage>
                             <generateSupportingFiles>false</generateSupportingFiles>
-                            <configOptions>
-                                <interfaceOnly>true</interfaceOnly>
-                                <useSpringBoot3>true</useSpringBoot3>
-                                <useTags>true</useTags>
-                                <useBeanValidation>true</useBeanValidation>
-                                <openApiNullable>true</openApiNullable>
-                                <skipDefaultInterface>true</skipDefaultInterface>
-                                <documentationProvider>none</documentationProvider>
-                                <annotationLibrary>none</annotationLibrary>
-                                <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>
-                                <generateJsonSetterNullsAnnotations>false</generateJsonSetterNullsAnnotations>
-                            </configOptions>
                         </configuration>
                     </execution>
                     <execution>
@@ -106,12 +94,8 @@
                             <invokerPackage>ru.itmo.soa.booking.client.ticket.invoker</invokerPackage>
                             <configOptions>
                                 <useJakartaEe>true</useJakartaEe>
-                                <openApiNullable>true</openApiNullable>
-                                <annotationLibrary>none</annotationLibrary>
-                                <documentationProvider>none</documentationProvider>
                                 <sourceFolder>src/main/java</sourceFolder>
-                                <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>
-                                <generateJsonSetterNullsAnnotations>false</generateJsonSetterNullsAnnotations>
+                                <useBeanValidation>false</useBeanValidation>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -130,12 +114,8 @@
                             <invokerPackage>ru.itmo.soa.booking.client.person.invoker</invokerPackage>
                             <configOptions>
                                 <useJakartaEe>true</useJakartaEe>
-                                <openApiNullable>true</openApiNullable>
-                                <annotationLibrary>none</annotationLibrary>
-                                <documentationProvider>none</documentationProvider>
                                 <sourceFolder>src/main/java</sourceFolder>
-                                <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>
-                                <generateJsonSetterNullsAnnotations>false</generateJsonSetterNullsAnnotations>
+                                <useBeanValidation>false</useBeanValidation>
                             </configOptions>
                         </configuration>
                     </execution>

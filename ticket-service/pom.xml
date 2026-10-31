@@ -70,19 +70,9 @@
                             <modelNameMappings>Error=ErrorResponse</modelNameMappings>
                             <generateSupportingFiles>false</generateSupportingFiles>
                             <configOptions>
-                                <interfaceOnly>true</interfaceOnly>
-                                <useSpringBoot3>true</useSpringBoot3>
-                                <useTags>true</useTags>
-                                <useBeanValidation>true</useBeanValidation>
                                 <performBeanValidation>false</performBeanValidation>
-                                <openApiNullable>true</openApiNullable>
-                                <skipDefaultInterface>true</skipDefaultInterface>
                                 <useResponseEntity>true</useResponseEntity>
-                                <documentationProvider>none</documentationProvider>
-                                <annotationLibrary>none</annotationLibrary>
                                 <dateLibrary>java8</dateLibrary>
-                                <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>
-                                <generateJsonSetterNullsAnnotations>false</generateJsonSetterNullsAnnotations>
                             </configOptions>
                         </configuration>
                     </execution>

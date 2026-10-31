@@ -57,6 +57,20 @@
                     <groupId>org.openapitools</groupId>
                     <artifactId>openapi-generator-maven-plugin</artifactId>
                     <version>${openapi-generator.version}</version>
+                    <configuration>
+                        <configOptions>
+                            <annotationLibrary>none</annotationLibrary>
+                            <documentationProvider>none</documentationProvider>
+                            <openApiNullable>true</openApiNullable>
+                            <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>
+                            <generateJsonSetterNullsAnnotations>false</generateJsonSetterNullsAnnotations>
+                            <interfaceOnly>true</interfaceOnly>
+                            <useSpringBoot3>true</useSpringBoot3>
+                            <useTags>true</useTags>
+                            <useBeanValidation>true</useBeanValidation>
+                            <skipDefaultInterface>true</skipDefaultInterface>
+                        </configOptions>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
