@@ -37,7 +37,7 @@ function buildBody(fields, values) {
         if (raw === '') {
             continue;
         }
-        const value = raw === 'null' ? null : f.number && raw !== '' && !isNaN(raw) ? Number(raw) : raw;
+        const value = raw === 'null' ? null : f.number && !isNaN(raw) ? Number(raw) : raw;
         const path = f.name.split('.');
         let target = body;
         for (const key of path.slice(0, -1)) {
