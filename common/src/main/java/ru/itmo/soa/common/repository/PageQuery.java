@@ -22,10 +22,13 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,7 +38,18 @@ public class PageQuery {
     private static final Pattern FILTER = Pattern.compile("^([A-Za-z.]+?)(!=|>=|<=|=|>|<|~)(.*)$", Pattern.DOTALL);
     private static final Pattern SORT = Pattern.compile("^([A-Za-z.]+),(asc|desc)$");
 
+    private static final ConcurrentMap<Class<?>, EntityShape> SHAPES = new ConcurrentHashMap<>();
+
     public record Result<T>(List<T> items, long totalElements, int totalPages) {
+    }
+
+    private record EntityShape(Set<String> fields, Set<String> joins, Map<String, Class<?>> types) {
+    }
+
+    private record FilterCondition(String field, String op, Comparable<?> value, boolean nullLiteral) {
+    }
+
+    private record SortField(String field, boolean ascending) {
     }
 
     private final EntityManager em;
@@ -45,24 +59,25 @@ public class PageQuery {
     }
 
     public <T> Result<T> find(Class<T> entity, int page, int size, List<String> sort, List<String> filter) {
-        Set<String> fields = new HashSet<>();
-        Set<String> joins = new HashSet<>();
-        describe(em.getMetamodel().entity(entity), "", fields, joins);
+        EntityShape shape = SHAPES.computeIfAbsent(entity, this::describe);
+        List<FilterCondition> conditions = parseFilters(shape, filter);
+        checkConflicts(conditions);
+        List<SortField> sorts = parseSorts(shape, sort);
 
         CriteriaBuilder cb = em.getCriteriaBuilder();
 
         CriteriaQuery<Long> count = cb.createQuery(Long.class);
         Root<T> countRoot = count.from(entity);
         count.select(cb.count(countRoot))
-                .where(predicates(cb, countRoot, fields, joins, filter));
+                .where(predicates(cb, countRoot, new HashMap<>(), shape, conditions));
         long total = em.createQuery(count).getSingleResult();
 
         CriteriaQuery<T> select = cb.createQuery(entity);
         Root<T> root = select.from(entity);
-        Map<String, From<?, ?>> joined = new HashMap<>();
+        Map<String, From<?, ?>> joined = fetchJoins(root, shape.joins());
         select.select(root)
-                .where(predicates(cb, root, joined, fields, joins, filter))
-                .orderBy(orders(cb, root, joined, fields, joins, sort));
+                .where(predicates(cb, root, joined, shape, conditions))
+                .orderBy(orders(cb, root, joined, shape, sorts));
 
         long offset = (long) (page - 1) * size;
         List<T> items = offset >= total ? List.of() : em.createQuery(select)
@@ -72,16 +87,28 @@ public class PageQuery {
         return new Result<>(items, total, (int) ((total + size - 1) / size));
     }
 
-    private void describe(ManagedType<?> type, String prefix, Set<String> fields, Set<String> joins) {
+    private EntityShape describe(Class<?> entity) {
+        Set<String> fields = new HashSet<>();
+        Set<String> joins = new HashSet<>();
+        Map<String, Class<?>> types = new HashMap<>();
+        describe(em.getMetamodel().entity(entity), "", fields, joins, types);
+        return new EntityShape(fields, joins, types);
+    }
+
+    private void describe(ManagedType<?> type, String prefix, Set<String> fields, Set<String> joins,
+            Map<String, Class<?>> types) {
         for (Attribute<?, ?> attribute : type.getAttributes()) {
             String name = prefix + attribute.getName();
             switch (attribute.getPersistentAttributeType()) {
-                case BASIC -> fields.add(name);
+                case BASIC -> {
+                    fields.add(name);
+                    types.put(name, attribute.getJavaType());
+                }
                 case EMBEDDED -> describe(em.getMetamodel().embeddable(attribute.getJavaType()), name + ".",
-                        fields, joins);
+                        fields, joins, types);
                 case ONE_TO_ONE, MANY_TO_ONE -> {
                     joins.add(name);
-                    describe(em.getMetamodel().entity(attribute.getJavaType()), name + ".", fields, joins);
+                    describe(em.getMetamodel().entity(attribute.getJavaType()), name + ".", fields, joins, types);
                 }
                 default -> {
                 }
@@ -89,93 +116,138 @@ public class PageQuery {
         }
     }
 
-    private static Predicate[] predicates(CriteriaBuilder cb, Root<?> root, Set<String> fields, Set<String> joins,
-            List<String> filter) {
-        return predicates(cb, root, new HashMap<>(), fields, joins, filter);
-    }
-
-    private static Predicate[] predicates(CriteriaBuilder cb, Root<?> root, Map<String, From<?, ?>> joined,
-            Set<String> fields, Set<String> joins, List<String> filter) {
-        List<Predicate> result = new ArrayList<>();
-        Map<String, List<String[]>> byField = new HashMap<>();
+    private static List<FilterCondition> parseFilters(EntityShape shape, List<String> filter) {
+        List<FilterCondition> conditions = new ArrayList<>();
         for (String raw : filter == null ? List.<String>of() : filter) {
             Matcher m = FILTER.matcher(raw);
-            if (!m.matches() || !fields.contains(m.group(1))) {
+            if (!m.matches() || !shape.fields().contains(m.group(1))) {
                 throw ApiException.badRequest("error.filter.unknown", raw);
             }
-            Path<?> path = path(root, joined, joins, m.group(1));
-            result.add(predicate(cb, path, m.group(1), m.group(2), m.group(3)));
-            byField.computeIfAbsent(m.group(1), f -> new ArrayList<>()).add(new String[]{m.group(2), m.group(3)});
-            checkSatisfiable(m.group(1), path.getJavaType(), byField.get(m.group(1)));
+            String field = m.group(1);
+            String op = m.group(2);
+            String text = m.group(3);
+            boolean nullLiteral = text.equals("null") && (op.equals("=") || op.equals("!="));
+            Comparable<?> value = nullLiteral ? null : op.equals("~") ? text : parse(shape.types().get(field), field, text);
+            conditions.add(new FilterCondition(field, op, value, nullLiteral));
         }
-        return result.toArray(Predicate[]::new);
+        return conditions;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void checkSatisfiable(String field, Class<?> type, List<String[]> conditions) {
+    private static List<SortField> parseSorts(EntityShape shape, List<String> sort) {
+        List<SortField> sorts = new ArrayList<>();
+        Set<String> sorted = new HashSet<>();
+        for (String raw : sort == null ? List.<String>of() : sort) {
+            Matcher m = SORT.matcher(raw);
+            if (!m.matches() || !shape.fields().contains(m.group(1))) {
+                throw ApiException.badRequest("error.sort.value", raw);
+            }
+            if (!sorted.add(m.group(1))) {
+                throw ApiException.badRequest("error.sort.duplicate", m.group(1));
+            }
+            sorts.add(new SortField(m.group(1), m.group(2).equals("asc")));
+        }
+        return sorts;
+    }
+
+    private static void checkConflicts(List<FilterCondition> conditions) {
+        Map<String, List<FilterCondition>> byField = new LinkedHashMap<>();
+        for (FilterCondition condition : conditions) {
+            byField.computeIfAbsent(condition.field(), f -> new ArrayList<>()).add(condition);
+        }
+        byField.forEach(PageQuery::checkSatisfiable);
+    }
+
+    private static void checkSatisfiable(String field, List<FilterCondition> conditions) {
         boolean isNull = false;
         boolean notNull = false;
-        Comparable equal = null;
-        Comparable lower = null;
+        Comparable<?> equal = null;
+        Comparable<?> lower = null;
         boolean lowerStrict = false;
-        Comparable upper = null;
+        Comparable<?> upper = null;
         boolean upperStrict = false;
-        List<Comparable> excluded = new ArrayList<>();
-        for (String[] c : conditions) {
-            String op = c[0];
-            if (op.equals("~")) continue;
-            if (c[1].equals("null") && (op.equals("=") || op.equals("!="))) {
-                if (op.equals("=")) isNull = true; else notNull = true;
+        List<Comparable<?>> excluded = new ArrayList<>();
+        for (FilterCondition c : conditions) {
+            if (c.nullLiteral()) {
+                if (c.op().equals("=")) isNull = true; else notNull = true;
                 continue;
             }
             notNull = true;
-            Comparable v = parse(type, field, c[1]);
-            switch (op) {
+            if (c.op().equals("~")) continue;
+            Comparable<?> v = c.value();
+            switch (c.op()) {
                 case "=" -> {
-                    if (equal != null && equal.compareTo(v) != 0) conflict(field);
+                    if (equal != null && compare(equal, v) != 0) conflict(field);
                     equal = v;
                 }
                 case "!=" -> excluded.add(v);
                 case ">", ">=" -> {
-                    int cmp = lower == null ? 1 : v.compareTo(lower);
-                    if (cmp > 0 || (cmp == 0 && op.equals(">"))) { lower = v; lowerStrict = op.equals(">"); }
+                    int cmp = lower == null ? 1 : compare(v, lower);
+                    if (cmp > 0 || (cmp == 0 && c.op().equals(">"))) { lower = v; lowerStrict = c.op().equals(">"); }
                 }
                 default -> {
-                    int cmp = upper == null ? -1 : v.compareTo(upper);
-                    if (cmp < 0 || (cmp == 0 && op.equals("<"))) { upper = v; upperStrict = op.equals("<"); }
+                    int cmp = upper == null ? -1 : compare(v, upper);
+                    if (cmp < 0 || (cmp == 0 && c.op().equals("<"))) { upper = v; upperStrict = c.op().equals("<"); }
                 }
             }
         }
         if (isNull && notNull) conflict(field);
         if (lower != null && upper != null) {
-            int cmp = lower.compareTo(upper);
+            int cmp = compare(lower, upper);
             if (cmp > 0 || (cmp == 0 && (lowerStrict || upperStrict))) conflict(field);
+            if (cmp == 0) {
+                Comparable<?> pinned = lower;
+                if (excluded.stream().anyMatch(x -> compare(x, pinned) == 0)) conflict(field);
+            }
         }
         if (equal != null) {
-            Comparable eq = equal;
-            if (excluded.stream().anyMatch(x -> x.compareTo(eq) == 0)) conflict(field);
-            if (lower != null && (lowerStrict ? eq.compareTo(lower) <= 0 : eq.compareTo(lower) < 0)) conflict(field);
-            if (upper != null && (upperStrict ? eq.compareTo(upper) >= 0 : eq.compareTo(upper) > 0)) conflict(field);
+            Comparable<?> eq = equal;
+            if (excluded.stream().anyMatch(x -> compare(x, eq) == 0)) conflict(field);
+            if (lower != null && (lowerStrict ? compare(eq, lower) <= 0 : compare(eq, lower) < 0)) conflict(field);
+            if (upper != null && (upperStrict ? compare(eq, upper) >= 0 : compare(eq, upper) > 0)) conflict(field);
         }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static int compare(Comparable<?> a, Comparable<?> b) {
+        if (a instanceof Enum<?> ea && b instanceof Enum<?> eb) {
+            return ea.name().compareTo(eb.name());
+        }
+        if (a instanceof OffsetDateTime da && b instanceof OffsetDateTime db) {
+            return da.toInstant().compareTo(db.toInstant());
+        }
+        return ((Comparable) a).compareTo(b);
     }
 
     private static void conflict(String field) {
         throw ApiException.badRequest("error.filter.conflict", field);
     }
 
+    private static Predicate[] predicates(CriteriaBuilder cb, Root<?> root, Map<String, From<?, ?>> joined,
+            EntityShape shape, List<FilterCondition> conditions) {
+        List<Predicate> result = new ArrayList<>();
+        for (FilterCondition condition : conditions) {
+            result.add(predicate(cb, path(root, joined, shape.joins(), condition.field()), condition));
+        }
+        return result.toArray(Predicate[]::new);
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Predicate predicate(CriteriaBuilder cb, Path<?> path, String field, String op, String raw) {
-        if (op.equals("~")) {
-            String pattern = "%" + raw.toLowerCase(Locale.ROOT)
+    private static Predicate predicate(CriteriaBuilder cb, Path<?> path, FilterCondition condition) {
+        if (condition.op().equals("~")) {
+            String pattern = "%" + condition.value().toString().toLowerCase(Locale.ROOT)
                     .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            return cb.like(cb.lower(path.as(String.class)), pattern, '\\');
+            // Hibernate registers str() as a cast-to-string function; as(String.class) emits no SQL cast
+            Expression<String> text = path.getJavaType() == String.class
+                    ? (Expression<String>) path
+                    : cb.function("str", String.class, path);
+            return cb.like(cb.lower(text), pattern, '\\');
         }
-        if (raw.equals("null") && (op.equals("=") || op.equals("!="))) {
-            return op.equals("=") ? cb.isNull(path) : cb.isNotNull(path);
+        if (condition.nullLiteral()) {
+            return condition.op().equals("=") ? cb.isNull(path) : cb.isNotNull(path);
         }
-        Comparable value = parse(path.getJavaType(), field, raw);
+        Comparable value = condition.value();
         Expression<Comparable> expr = (Expression<Comparable>) path;
-        return switch (op) {
+        return switch (condition.op()) {
             case "=" -> cb.equal(expr, value);
             case "!=" -> cb.notEqual(expr, value);
             case ">" -> cb.greaterThan(expr, value);
@@ -205,22 +277,34 @@ public class PageQuery {
     }
 
     private static List<Order> orders(CriteriaBuilder cb, Root<?> root, Map<String, From<?, ?>> joined,
-            Set<String> fields, Set<String> joins, List<String> sort) {
+            EntityShape shape, List<SortField> sorts) {
         List<Order> result = new ArrayList<>();
-        Set<String> sorted = new HashSet<>();
-        for (String raw : sort == null ? List.<String>of() : sort) {
-            Matcher m = SORT.matcher(raw);
-            if (!m.matches() || !fields.contains(m.group(1))) {
-                throw ApiException.badRequest("error.sort.value", raw);
-            }
-            if (!sorted.add(m.group(1))) {
-                throw ApiException.badRequest("error.sort.duplicate", m.group(1));
-            }
-            Path<?> path = path(root, joined, joins, m.group(1));
-            result.add(m.group(2).equals("asc") ? cb.asc(path) : cb.desc(path));
+        for (SortField sort : sorts) {
+            Path<?> path = path(root, joined, shape.joins(), sort.field());
+            result.add(sort.ascending() ? cb.asc(path) : cb.desc(path));
         }
         result.add(cb.asc(root.get("id")));
         return result;
+    }
+
+    private static Map<String, From<?, ?>> fetchJoins(Root<?> root, Set<String> joins) {
+        Map<String, From<?, ?>> joined = new HashMap<>();
+        for (String name : joins) {
+            StringBuilder prefix = new StringBuilder();
+            From<?, ?> parent = root;
+            for (String part : name.split("\\.")) {
+                prefix.append(part);
+                From<?, ?> current = joined.get(prefix.toString());
+                if (current == null) {
+                    // a fetch join implements Join and can seed predicate/order paths
+                    current = (From<?, ?>) parent.fetch(part, JoinType.LEFT);
+                    joined.put(prefix.toString(), current);
+                }
+                parent = current;
+                prefix.append('.');
+            }
+        }
+        return joined;
     }
 
     private static Path<?> path(Root<?> root, Map<String, From<?, ?>> joined, Set<String> joins, String field) {
