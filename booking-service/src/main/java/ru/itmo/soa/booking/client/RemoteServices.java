@@ -52,6 +52,13 @@ public class RemoteServices {
         return call("Ticket Service", null, null, () -> tickets.createTicket(ticket));
     }
 
+    public void deleteTicket(long id) {
+        call("Ticket Service", null, null, () -> {
+            tickets.deleteTicket(id);
+            return null;
+        });
+    }
+
     public void checkPerson(long id) {
         call("Person Service", "person.notFound", id, () -> persons.getPerson(id));
     }
