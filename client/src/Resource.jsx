@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { request } from './api.js';
-import { buildBody } from './form-body.js';
+import { bodyErrors, buildBody, fieldState } from './form-body.js';
 
 const OPS = ['=', '!=', '>', '>=', '<', '<=', '~'];
 const STATUS = {
@@ -74,6 +74,7 @@ function List({ cfg, reloadKey }) {
     const [size, setSize] = useState(20);
     const [result, setResult] = useState(null);
     const abortRef = useRef(null);
+    const idPrefix = useId();
 
     async function load(p = page) {
         abortRef.current?.abort();
@@ -125,8 +126,8 @@ function List({ cfg, reloadKey }) {
         setSorts(sorts.filter((_, j) => j !== i));
     }
 
-    const fieldSelect = (value, onChange) => (
-        <select value={value} onChange={(e) => onChange(e.target.value)}>
+    const fieldSelect = (id, value, onChange) => (
+        <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
             {cfg.filterFields.map((f) => (
                 <option key={f}>{f}</option>
             ))}
@@ -140,8 +141,13 @@ function List({ cfg, reloadKey }) {
             <h3>Фильтры (все условия через И)</h3>
             {filters.map((f, i) => (
                 <div key={i}>
-                    {fieldSelect(f.field, (v) => update(filters, setFilters, i, 'field', v))}
+                    <label className="inline" htmlFor={`${idPrefix}-filter-field-${i}`}>Поле </label>
+                    {fieldSelect(`${idPrefix}-filter-field-${i}`, f.field, (v) =>
+                        update(filters, setFilters, i, 'field', v),
+                    )}
+                    <label className="inline" htmlFor={`${idPrefix}-filter-op-${i}`}>Условие </label>
                     <select
+                        id={`${idPrefix}-filter-op-${i}`}
                         value={f.op}
                         onChange={(e) => update(filters, setFilters, i, 'op', e.target.value)}
                     >
@@ -149,7 +155,9 @@ function List({ cfg, reloadKey }) {
                             <option key={op}>{op}</option>
                         ))}
                     </select>
+                    <label className="inline" htmlFor={`${idPrefix}-filter-value-${i}`}>Значение </label>
                     <input
+                        id={`${idPrefix}-filter-value-${i}`}
                         value={f.value}
                         placeholder="значение или null"
                         onChange={(e) => update(filters, setFilters, i, 'value', e.target.value)}
@@ -161,8 +169,16 @@ function List({ cfg, reloadKey }) {
             <h3>Сортировка (по порядку приоритета)</h3>
             {sorts.map((s, i) => (
                 <div key={i}>
-                    {fieldSelect(s.field, (v) => update(sorts, setSorts, i, 'field', v))}
-                    <select value={s.dir} onChange={(e) => update(sorts, setSorts, i, 'dir', e.target.value)}>
+                    <label className="inline" htmlFor={`${idPrefix}-sort-field-${i}`}>Поле </label>
+                    {fieldSelect(`${idPrefix}-sort-field-${i}`, s.field, (v) =>
+                        update(sorts, setSorts, i, 'field', v),
+                    )}
+                    <label className="inline" htmlFor={`${idPrefix}-sort-dir-${i}`}>Порядок </label>
+                    <select
+                        id={`${idPrefix}-sort-dir-${i}`}
+                        value={s.dir}
+                        onChange={(e) => update(sorts, setSorts, i, 'dir', e.target.value)}
+                    >
                         <option value="asc">по возрастанию</option>
                         <option value="desc">по убыванию</option>
                     </select>
@@ -171,7 +187,8 @@ function List({ cfg, reloadKey }) {
             ))}
             <button onClick={addSort}>+ сортировка</button>
             <p>
-                Размер страницы <input value={size} onChange={(e) => setSize(e.target.value)} />
+                <label className="inline" htmlFor={`${idPrefix}-size`}>Размер страницы </label>
+                <input id={`${idPrefix}-size`} value={size} onChange={(e) => setSize(e.target.value)} />
                 <button onClick={show}>Показать</button>
             </p>
             {result && !result.ok && <Result result={result} />}
@@ -219,6 +236,7 @@ function Item({ cfg, onChanged }) {
     const [values, setValues] = useState({});
     const [result, setResult] = useState(null);
     const [pending, setPending] = useState(null);
+    const idPrefix = useId();
 
     async function run(title, key, makeCall) {
         setPending(key);
@@ -242,6 +260,15 @@ function Item({ cfg, onChanged }) {
         action(`${cfg.url}/${clean}`);
     }
 
+    function validBody() {
+        const errors = bodyErrors(cfg.fields, values);
+        if (errors.length > 0) {
+            setResult({ ok: false, status: 0, data: { message: errors.join('; ') } });
+            return null;
+        }
+        return buildBody(cfg.fields, values);
+    }
+
     function get() {
         withId((url) => run('Найден', 'get', () => request('GET', url)));
     }
@@ -251,53 +278,96 @@ function Item({ cfg, onChanged }) {
     }
 
     function update() {
+        const body = validBody();
+        if (body === null) {
+            return;
+        }
         withId((url) =>
-            run('Изменён', 'update', () =>
-                request('PATCH', url, buildBody(cfg.fields, values), 'application/merge-patch+json'),
-            ),
+            run('Изменён', 'update', () => request('PATCH', url, body, 'application/merge-patch+json')),
         );
     }
 
     function create() {
-        run('Создан', 'create', () => request('POST', cfg.url, buildBody(cfg.fields, values)));
+        const body = validBody();
+        if (body === null) {
+            return;
+        }
+        run('Создан', 'create', () => request('POST', cfg.url, body));
     }
 
     function setValue(name, value) {
         setValues({ ...values, [name]: value });
     }
 
+    function setNull(name, on) {
+        setValues({ ...values, [`${name}$null`]: on });
+    }
+
+    const parents = cfg.fields.filter((f) => cfg.fields.some((x) => x.name.startsWith(`${f.name}.`)));
+    const isActive = (f) => fieldState(f, values).send;
+    const isBlocked = (f) => {
+        const dot = f.name.indexOf('.');
+        if (dot > 0) {
+            const parent = parents.find((x) => x.name === f.name.slice(0, dot));
+            return !!parent && isActive(parent);
+        }
+        return parents.includes(f) && cfg.fields.some((x) => x.name.startsWith(`${f.name}.`) && isActive(x));
+    };
+
     return (
         <section>
             <h2>Элемент</h2>
             <p>
-                id <input value={id} onChange={(e) => setId(e.target.value)} />
+                <label className="inline" htmlFor={`${idPrefix}-id`}>id </label>
+                <input id={`${idPrefix}-id`} value={id} onChange={(e) => setId(e.target.value)} />
                 <button disabled={pending !== null} onClick={get}>Получить</button>
                 <button disabled={pending !== null} onClick={remove}>Удалить</button>
                 <button disabled={pending !== null} onClick={update}>Изменить (PATCH)</button>
             </p>
-            {cfg.fields.map((f) => (
-                <p key={f.name}>
-                    <label>{f.label} </label>
-                    {f.values ? (
-                        <select
-                            value={values[f.name] ?? ''}
-                            onChange={(e) => setValue(f.name, e.target.value)}
-                        >
-                            <option value="">-</option>
-                            {f.values.map((v) => (
-                                <option key={v}>{v}</option>
-                            ))}
-                            <option>null</option>
-                        </select>
-                    ) : (
-                        <input
-                            value={values[f.name] ?? ''}
-                            onChange={(e) => setValue(f.name, e.target.value)}
-                        />
-                    )}
-                </p>
-            ))}
-            <p className="hint">Пустые поля не отправляются, значение null очищает поле.</p>
+            {cfg.fields.map((f) => {
+                const { raw, isNull } = fieldState(f, values);
+                const blocked = isBlocked(f);
+                return (
+                    <p key={f.name}>
+                        <label htmlFor={`${idPrefix}-${f.name}`}>{f.label} </label>
+                        {f.values ? (
+                            <select
+                                id={`${idPrefix}-${f.name}`}
+                                disabled={blocked}
+                                value={raw}
+                                onChange={(e) => setValue(f.name, e.target.value)}
+                            >
+                                <option value="">-</option>
+                                {f.values.map((v) => (
+                                    <option key={v}>{v}</option>
+                                ))}
+                                <option>null</option>
+                            </select>
+                        ) : (
+                            <>
+                                <input
+                                    id={`${idPrefix}-${f.name}`}
+                                    disabled={blocked || isNull}
+                                    value={raw}
+                                    onChange={(e) => setValue(f.name, e.target.value)}
+                                />
+                                <label className="inline">
+                                    <input
+                                        type="checkbox"
+                                        disabled={blocked}
+                                        checked={isNull}
+                                        onChange={(e) => setNull(f.name, e.target.checked)}
+                                    />
+                                    null
+                                </label>
+                            </>
+                        )}
+                    </p>
+                );
+            })}
+            <p className="hint">
+                Пустые поля не отправляются; флажок null отправляет null, остальной текст передаётся как есть.
+            </p>
             <button disabled={pending !== null} onClick={create}>Создать (POST)</button>
             <Result result={result} />
         </section>
@@ -308,6 +378,7 @@ function Action({ action, onChanged }) {
     const [values, setValues] = useState(action.inputs.map((i) => (i.values ? i.values[0] : '')));
     const [result, setResult] = useState(null);
     const [pending, setPending] = useState(false);
+    const idPrefix = useId();
 
     function setValue(i, value) {
         setValues(values.map((v, j) => (j === i ? value : v)));
@@ -334,15 +405,15 @@ function Action({ action, onChanged }) {
                 const set = (e) => setValue(i, e.target.value);
                 return (
                     <span key={i}>
-                        {input.label}{' '}
+                        <label className="inline" htmlFor={`${idPrefix}-${i}`}>{input.label} </label>
                         {input.values ? (
-                            <select value={values[i]} onChange={set}>
+                            <select id={`${idPrefix}-${i}`} value={values[i]} onChange={set}>
                                 {input.values.map((v) => (
                                     <option key={v}>{v}</option>
                                 ))}
                             </select>
                         ) : (
-                            <input value={values[i]} onChange={set} />
+                            <input id={`${idPrefix}-${i}`} value={values[i]} onChange={set} />
                         )}
                     </span>
                 );

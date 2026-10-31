@@ -1,17 +1,49 @@
+const NUMBER_RE = /^\s*[+-]?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?\s*$/;
+
+export function fieldState(field, values) {
+    const raw = values[field.name] ?? '';
+    const isNull = !!values[`${field.name}$null`] || (!!field.values && raw === 'null');
+    return { raw, isNull, send: isNull || raw !== '' };
+}
+
+export function bodyErrors(fields, values) {
+    return fields
+        .filter((f) => {
+            const { raw, isNull, send } = fieldState(f, values);
+            return send && !isNull && f.number && !NUMBER_RE.test(raw);
+        })
+        .map((f) => `Поле «${f.label}»: некорректное число`);
+}
+
 export function buildBody(fields, values) {
-    const body = {};
+    const parts = [];
+    const groups = new Map();
     for (const f of fields) {
-        const raw = (values[f.name] ?? '').trim();
-        if (raw === '') {
+        const { raw, isNull, send } = fieldState(f, values);
+        if (!send) {
             continue;
         }
-        const value = raw === 'null' ? null : f.number && !isNaN(raw) ? Number(raw) : raw;
-        const path = f.name.split('.');
-        let target = body;
-        for (const key of path.slice(0, -1)) {
-            target = target[key] ??= {};
+        const text = isNull ? 'null' : f.number ? numberText(raw) : JSON.stringify(raw);
+        const dot = f.name.indexOf('.');
+        if (dot < 0) {
+            parts.push(`${JSON.stringify(f.name)}:${text}`);
+            continue;
         }
-        target[path.at(-1)] = value;
+        const name = f.name.slice(0, dot);
+        let group = groups.get(name);
+        if (!group) {
+            group = [];
+            groups.set(name, group);
+            parts.push({ name, group });
+        }
+        group.push(`${JSON.stringify(f.name.slice(dot + 1))}:${text}`);
     }
-    return body;
+    return `{${parts
+        .map((p) => (typeof p === 'string' ? p : `${JSON.stringify(p.name)}:{${p.group.join(',')}}`))
+        .join(',')}}`;
+}
+
+function numberText(raw) {
+    const digits = raw.trim();
+    return digits.startsWith('+') ? digits.slice(1) : digits;
 }

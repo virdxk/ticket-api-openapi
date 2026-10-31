@@ -5,7 +5,7 @@ export async function request(method, url, body, contentType = 'application/json
             method,
             signal,
             headers: body === undefined ? {} : { 'Content-Type': contentType },
-            body: body === undefined ? undefined : JSON.stringify(body),
+            body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
         });
         const text = await res.text();
         let data = null;
