@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDate;
 
@@ -17,10 +18,13 @@ public class PersonEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
-    @Column(nullable = false)
+    @Version
+    public long version;
+
+    @Column(nullable = false, columnDefinition = "text")
     public String firstName;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     public String lastName;
 
     @Column(nullable = false)

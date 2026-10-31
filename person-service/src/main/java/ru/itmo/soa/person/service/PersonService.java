@@ -14,6 +14,7 @@ import ru.itmo.soa.person.entity.PersonEntity;
 import ru.itmo.soa.person.repository.PersonRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -34,7 +35,7 @@ public class PersonService {
         e.firstName = body.getFirstName();
         e.lastName = body.getLastName();
         e.birthday = body.getBirthday();
-        return toDto(repository.saveAndFlush(e));
+        return toDto(repository.save(e));
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +59,7 @@ public class PersonService {
         if (patch.getFirstName() != null) e.firstName = patch.getFirstName();
         if (patch.getLastName() != null) e.lastName = patch.getLastName();
         if (patch.getBirthday() != null) e.birthday = patch.getBirthday();
-        return toDto(repository.saveAndFlush(e));
+        return toDto(e);
     }
 
     public void delete(Long id) {
@@ -70,7 +71,7 @@ public class PersonService {
     }
 
     private static void checkBirthday(LocalDate birthday) {
-        if (birthday.isAfter(LocalDate.now())) {
+        if (birthday.isAfter(LocalDate.now(ZoneOffset.UTC))) {
             throw ApiException.invalid(List.of(Violation.of("birthday", "person.birthday.future")));
         }
     }

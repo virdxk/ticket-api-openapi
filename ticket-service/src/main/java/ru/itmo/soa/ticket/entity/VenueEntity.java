@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import ru.itmo.soa.ticket.api.model.VenueType;
 
 @Entity
@@ -18,7 +19,10 @@ public class VenueEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Integer id;
 
-    @Column(nullable = false)
+    @Version
+    public long version;
+
+    @Column(nullable = false, columnDefinition = "text")
     public String name;
 
     @Column(nullable = false)

@@ -1,5 +1,7 @@
 package ru.itmo.soa.booking.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.http.HttpStatus;
@@ -14,10 +16,15 @@ import ru.itmo.soa.booking.client.ticket.model.TicketCreate;
 import ru.itmo.soa.common.error.ApiException;
 
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.function.Supplier;
 
 @Component
 public class RemoteServices {
+
+    private static final Logger log = LoggerFactory.getLogger(RemoteServices.class);
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
 
     private final TicketsApi tickets;
     private final PersonsApi persons;
@@ -26,7 +33,9 @@ public class RemoteServices {
                           @Value("${person-service.url}") String personUrl, SslBundles ssl) {
         JdkClientHttpRequestFactory https = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
                 .sslContext(ssl.getBundle("services").createSslContext())
+                .connectTimeout(CONNECT_TIMEOUT)
                 .build());
+        https.setReadTimeout(READ_TIMEOUT);
         tickets = new TicketsApi(new ru.itmo.soa.booking.client.ticket.invoker.ApiClient(
                 ru.itmo.soa.booking.client.ticket.invoker.ApiClient.buildRestClientBuilder()
                         .requestFactory(https).build()).setBasePath(ticketUrl));
@@ -43,6 +52,13 @@ public class RemoteServices {
         return call("Ticket Service", null, null, () -> tickets.createTicket(ticket));
     }
 
+    public void deleteTicket(long id) {
+        call("Ticket Service", null, null, () -> {
+            tickets.deleteTicket(id);
+            return null;
+        });
+    }
+
     public void checkPerson(long id) {
         call("Person Service", "person.notFound", id, () -> persons.getPerson(id));
     }
@@ -54,9 +70,11 @@ public class RemoteServices {
             if (notFound != null && e.getStatusCode().value() == 404) {
                 throw ApiException.notFound(notFound, id);
             }
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "service.failed", service, e.getStatusCode().value());
+            log.warn("{} returned HTTP {}: {}", service, e.getStatusCode().value(), e.getResponseBodyAsString());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, e, "service.failed", service, e.getStatusCode().value());
         } catch (RestClientException e) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "service.unavailable", service);
+            log.warn("{} is unavailable", service, e);
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, e, "service.unavailable", service);
         }
     }
 }

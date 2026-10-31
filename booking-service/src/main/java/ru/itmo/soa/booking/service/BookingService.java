@@ -1,8 +1,12 @@
 package ru.itmo.soa.booking.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.itmo.soa.booking.api.model.Booking;
 import ru.itmo.soa.booking.api.model.BookingCreate;
 import ru.itmo.soa.booking.api.model.BookingPage;
@@ -25,23 +29,27 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
-@Transactional
 public class BookingService {
+
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
     private final BookingRepository repository;
     private final PageQuery pageQuery;
     private final RemoteServices remote;
+    private final TransactionTemplate tx;
 
-    public BookingService(BookingRepository repository, PageQuery pageQuery, RemoteServices remote) {
+    public BookingService(BookingRepository repository, PageQuery pageQuery, RemoteServices remote,
+                          PlatformTransactionManager transactionManager) {
         this.repository = repository;
         this.pageQuery = pageQuery;
         this.remote = remote;
+        this.tx = new TransactionTemplate(transactionManager);
     }
 
     public Booking create(BookingCreate body) {
         remote.getTicket(body.getTicketId());
         remote.checkPerson(body.getPersonId());
-        return save(body.getTicketId(), body.getPersonId());
+        return tx.execute(status -> save(body.getTicketId(), body.getPersonId()));
     }
 
     @Transactional(readOnly = true)
@@ -60,18 +68,28 @@ public class BookingService {
         if (patch.getTicketId() == null && patch.getPersonId() == null) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "error.body.empty");
         }
-        BookingEntity e = find(id);
+        if (!repository.existsById(id)) {
+            throw ApiException.notFound("booking.notFound", id);
+        }
         if (patch.getTicketId() != null) {
             remote.getTicket(patch.getTicketId());
-            e.ticketId = patch.getTicketId();
         }
         if (patch.getPersonId() != null) {
             remote.checkPerson(patch.getPersonId());
-            e.personId = patch.getPersonId();
         }
-        return toDto(repository.saveAndFlush(e));
+        return tx.execute(status -> {
+            BookingEntity e = find(id);
+            if (patch.getTicketId() != null) {
+                e.ticketId = patch.getTicketId();
+            }
+            if (patch.getPersonId() != null) {
+                e.personId = patch.getPersonId();
+            }
+            return toDto(e);
+        });
     }
 
+    @Transactional
     public void delete(Long id) {
         repository.delete(find(id));
     }
@@ -81,6 +99,9 @@ public class BookingService {
         Ticket source = remote.getTicket(ticketId);
         if (source.getPrice() == null) {
             throw new ApiException(HttpStatus.CONFLICT, "ticket.noPrice", ticketId);
+        }
+        if (!Float.isFinite(source.getPrice() * 2)) {
+            throw new ApiException(HttpStatus.CONFLICT, "ticket.priceOverflow", ticketId);
         }
         TicketCreate copy = new TicketCreate()
                 .name(source.getName())
@@ -92,9 +113,21 @@ public class BookingService {
                         .name(source.getVenue().getName())
                         .capacity(source.getVenue().getCapacity())
                         .type(source.getVenue().getType()));
-        return save(remote.createTicket(copy).getId(), personId);
+        Long copyId = remote.createTicket(copy).getId();
+        try {
+            return tx.execute(status -> save(copyId, personId));
+        } catch (RuntimeException e) {
+            try {
+                remote.deleteTicket(copyId);
+            } catch (RuntimeException compensation) {
+                log.error("VIP sale compensation failed: copied ticket {} (source ticket {}, person {}) was not deleted",
+                        copyId, ticketId, personId, compensation);
+            }
+            throw e;
+        }
     }
 
+    @Transactional
     public CancellationResult cancel(Long personId) {
         return new CancellationResult(personId, repository.deleteByPersonId(personId));
     }
@@ -104,7 +137,7 @@ public class BookingService {
         e.ticketId = ticketId;
         e.personId = personId;
         e.createdAt = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
-        return toDto(repository.saveAndFlush(e));
+        return toDto(repository.save(e));
     }
 
     private BookingEntity find(Long id) {
