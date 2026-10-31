@@ -15,13 +15,10 @@ import ru.itmo.soa.person.repository.PersonRepository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Transactional
 public class PersonService {
-
-    private static final Set<String> FIELDS = Set.of("id", "firstName", "lastName", "birthday");
 
     private final PersonRepository repository;
     private final PageQuery pageQuery;
@@ -42,8 +39,7 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public PersonPage list(Integer page, Integer size, List<String> sort, List<String> filter) {
-        PageQuery.Result<PersonEntity> result = pageQuery.find(PersonEntity.class, FIELDS, Set.of(),
-                page, size, sort, filter);
+        PageQuery.Result<PersonEntity> result = pageQuery.find(PersonEntity.class, page, size, sort, filter);
         return new PersonPage(result.items().stream().map(PersonService::toDto).toList(),
                 page, size, result.totalElements(), result.totalPages());
     }

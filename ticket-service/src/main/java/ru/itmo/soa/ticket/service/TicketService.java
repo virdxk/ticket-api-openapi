@@ -21,14 +21,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Transactional
 public class TicketService {
-
-    private static final Set<String> FIELDS = Set.of("id", "name", "coordinates.x", "coordinates.y", "creationDate",
-            "price", "comment", "type", "venue.id", "venue.name", "venue.capacity", "venue.type");
 
     private final TicketRepository repository;
     private final PageQuery pageQuery;
@@ -52,8 +48,7 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public TicketPage list(Integer page, Integer size, List<String> sort, List<String> filter) {
-        PageQuery.Result<TicketEntity> result = pageQuery.find(TicketEntity.class, FIELDS, Set.of("venue"),
-                page, size, sort, filter);
+        PageQuery.Result<TicketEntity> result = pageQuery.find(TicketEntity.class, page, size, sort, filter);
         return new TicketPage(result.items().stream().map(TicketService::toDto).toList(),
                 page, size, result.totalElements(), result.totalPages());
     }

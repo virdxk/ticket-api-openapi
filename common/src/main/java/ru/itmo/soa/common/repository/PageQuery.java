@@ -10,6 +10,8 @@ import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.metamodel.Attribute;
+import jakarta.persistence.metamodel.ManagedType;
 import org.springframework.stereotype.Repository;
 import ru.itmo.soa.common.error.ApiException;
 
@@ -42,8 +44,11 @@ public class PageQuery {
         this.em = em;
     }
 
-    public <T> Result<T> find(Class<T> entity, Set<String> fields, Set<String> joins,
-            int page, int size, List<String> sort, List<String> filter) {
+    public <T> Result<T> find(Class<T> entity, int page, int size, List<String> sort, List<String> filter) {
+        Set<String> fields = new HashSet<>();
+        Set<String> joins = new HashSet<>();
+        describe(em.getMetamodel().entity(entity), "", fields, joins);
+
         CriteriaBuilder cb = em.getCriteriaBuilder();
 
         CriteriaQuery<Long> count = cb.createQuery(Long.class);
@@ -65,6 +70,23 @@ public class PageQuery {
                 .setMaxResults(size)
                 .getResultList();
         return new Result<>(items, total, (int) ((total + size - 1) / size));
+    }
+
+    private void describe(ManagedType<?> type, String prefix, Set<String> fields, Set<String> joins) {
+        for (Attribute<?, ?> attribute : type.getAttributes()) {
+            String name = prefix + attribute.getName();
+            switch (attribute.getPersistentAttributeType()) {
+                case BASIC -> fields.add(name);
+                case EMBEDDED -> describe(em.getMetamodel().embeddable(attribute.getJavaType()), name + ".",
+                        fields, joins);
+                case ONE_TO_ONE, MANY_TO_ONE -> {
+                    joins.add(name);
+                    describe(em.getMetamodel().entity(attribute.getJavaType()), name + ".", fields, joins);
+                }
+                default -> {
+                }
+            }
+        }
     }
 
     private static Predicate[] predicates(CriteriaBuilder cb, Root<?> root, Set<String> fields, Set<String> joins,
