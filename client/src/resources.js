@@ -1,4 +1,4 @@
-const BASE = 'https://se.ifmo.ru/~s412939';
+const BASE = import.meta.env.VITE_API_BASE ?? '';
 const TICKET_TYPES = ['VIP', 'USUAL', 'BUDGETARY', 'CHEAP'];
 const VENUE_TYPES = ['PUB', 'BAR', 'OPEN_AREA', 'MALL', 'STADIUM'];
 
