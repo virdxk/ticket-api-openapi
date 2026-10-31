@@ -10,6 +10,14 @@ function date(value) {
     return value ? new Date(value).toLocaleString('ru-RU') : '-';
 }
 
+function birthday(value) {
+    if (!value) {
+        return '-';
+    }
+    const [y, m, d] = String(value).split('-');
+    return `${d}.${m}.${y}`;
+}
+
 function venue(v) {
     if (!v) {
         return '-';
@@ -134,7 +142,7 @@ export const resources = [
             ['id', (p) => p.id],
             ['Имя', (p) => p.firstName],
             ['Фамилия', (p) => p.lastName],
-            ['Дата рождения', (p) => new Date(p.birthday).toLocaleDateString('ru-RU')],
+            ['Дата рождения', (p) => birthday(p.birthday)],
         ],
         actions: [],
     },
