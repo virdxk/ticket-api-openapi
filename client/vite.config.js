@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 const target = process.env.VITE_API_TARGET ?? 'https://se.ifmo.ru';
@@ -11,6 +12,6 @@ const proxy = Object.fromEntries(
 
 export default defineConfig({
   base: './',
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: { proxy },
 });
