@@ -1,4 +1,7 @@
-// JSON.parse rounds integers above 2^53, so displayed huge ids can differ from the server's; request bodies keep exact digits.
+import JSONbig from 'json-bigint';
+
+const json = JSONbig({ storeAsString: true });
+
 export async function request(method, url, body, contentType = 'application/json', signal) {
     try {
         const res = await fetch(url, {
@@ -10,7 +13,7 @@ export async function request(method, url, body, contentType = 'application/json
         const text = await res.text();
         let data = null;
         try {
-            data = text ? JSON.parse(text) : null;
+            data = text ? json.parse(text) : null;
         } catch {
             data = text;
         }

@@ -1,11 +1,11 @@
 import * as SelectPrimitive from '@radix-ui/react-select';
 
-export function Select({ id, value, onValueChange, options, disabled, required = false, invalid = false, className = '', ...props }) {
+export function Select({ id, value, onValueChange, options, disabled, required = false, invalid = false, placeholder, className = '', ...props }) {
     const state = invalid
         ? 'border-error focus:border-error focus:ring-error/20'
         : 'border-line focus:border-accent focus:ring-accent/20';
     return (
-        <SelectPrimitive.Root value={`value:${value}`} onValueChange={(value) => onValueChange(value.slice(6))} disabled={disabled}>
+        <SelectPrimitive.Root value={value === '' ? '' : `value:${value}`} onValueChange={(value) => onValueChange(value.slice(6))} disabled={disabled}>
             <SelectPrimitive.Trigger
                 id={id}
                 aria-required={required || undefined}
@@ -13,7 +13,7 @@ export function Select({ id, value, onValueChange, options, disabled, required =
                 className={`flex h-9 min-w-0 box-border items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm leading-5 text-ink transition-[border-color,box-shadow] duration-100 focus:outline-none focus:ring-3 disabled:bg-canvas disabled:text-muted [&>span:first-child]:truncate ${state} ${className}`}
                 {...props}
             >
-                <SelectPrimitive.Value />
+                <SelectPrimitive.Value placeholder={placeholder} />
                 <SelectPrimitive.Icon asChild>
                     <svg aria-hidden="true" className="size-4 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                         <path d="m6 9 6 6 6-6" />

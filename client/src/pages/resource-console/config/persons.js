@@ -29,13 +29,30 @@ export const persons = {
         },
     ],
     filterFields: [
-        { value: 'id', label: 'Номер человека' },
-        { value: 'firstName', label: 'Имя' },
-        { value: 'lastName', label: 'Фамилия' },
-        { value: 'birthday', label: 'Дата рождения' },
+        {
+            value: 'id',
+            label: 'Номер человека',
+            number: true,
+            integer: true,
+            minimum: 1,
+        },
+        {
+            value: 'firstName',
+            label: 'Имя',
+        },
+        {
+            value: 'lastName',
+            label: 'Фамилия',
+        },
+        {
+            value: 'birthday',
+            label: 'Дата рождения',
+            format: 'date',
+            notAfterToday: true,
+        },
     ],
     columns: [
-        ['id', (p) => p.id],
+        ['Номер', (p) => p.id],
         ['Имя', (p) => p.firstName],
         ['Фамилия', (p) => p.lastName],
         ['Дата рождения', (p) => birthday(p.birthday)],

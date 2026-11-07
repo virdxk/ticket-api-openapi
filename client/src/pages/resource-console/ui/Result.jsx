@@ -1,3 +1,5 @@
+import { fieldLabel, show } from '../lib/format.js';
+
 const STATUS = {
     400: 'некорректный запрос',
     404: 'не найдено',
@@ -17,9 +19,7 @@ export function Result({ result }) {
             {ok ? (
                 <b>{title}</b>
             ) : (
-                <b>
-                    Ошибка {status || ''}: {STATUS[status] || 'ошибка запроса'}
-                </b>
+                <b>{status ? `Ошибка ${status}: ${STATUS[status] || 'ошибка запроса'}` : 'Ошибка запроса'}</b>
             )}
             {!ok && data?.message && <p className="flex flex-wrap items-center gap-2">{data.message}</p>}
             {!ok && data?.details?.length > 0 && (
@@ -34,7 +34,7 @@ export function Result({ result }) {
                         <tbody>
                             {data.details.map((d, i) => (
                                 <tr key={i}>
-                                    <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{d.field}</td>
+                                    <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{fieldLabel(d.field)}</td>
                                     <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{d.message}</td>
                                 </tr>
                             ))}
@@ -48,8 +48,8 @@ export function Result({ result }) {
                         <tbody>
                             {Object.entries(data).map(([k, v]) => (
                                 <tr key={k}>
-                                    <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{k}</td>
-                                    <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{v !== null && typeof v === 'object' ? JSON.stringify(v) : String(v)}</td>
+                                    <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{fieldLabel(k)}</td>
+                                    <td className="border-b border-line px-3 py-2 align-top wrap-anywhere">{v !== null && typeof v === 'object' ? JSON.stringify(v) : show(v)}</td>
                                 </tr>
                             ))}
                         </tbody>

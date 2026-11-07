@@ -1,7 +1,7 @@
 import { Button, Input, Select } from '../../../shared/ui/index.js';
 import { useId, useState } from 'react';
 import { resourceApi } from '../api/resource-api.js';
-import { bodyErrors, bodyFieldBlocked, buildBody, fieldState, valueError } from '../model/form-body.js';
+import { bodyErrors, bodyFieldBlocked, buildBody, fieldDisabled, groupTouched, rawValue, todayText, valueError } from '../model/form-body.js';
 import { Result } from './Result.jsx';
 
 const ID_FIELD = { number: true, integer: true, minimum: 1 };
@@ -21,6 +21,10 @@ export function Item({ cfg, onChanged }) {
         try {
             const response = await makeCall();
             setResult({ ...response, title });
+            if (response.ok && (key === 'create' || key === 'update')) {
+                setTouched({});
+                setCreateAttempted(false);
+            }
             if (response.ok && key !== 'get') {
                 onChanged();
             }
@@ -46,7 +50,12 @@ export function Item({ cfg, onChanged }) {
             setResult({ ok: false, status: 0, data: { message: errors.join('; ') } });
             return null;
         }
-        return buildBody(cfg.fields, values, { creating, touched });
+        const body = buildBody(cfg.fields, values, { creating, touched });
+        if (!creating && body === '{}') {
+            setResult({ ok: false, status: 0, data: { message: 'Выберите хотя бы одно поле для изменения' } });
+            return null;
+        }
+        return body;
     }
 
     function get() {
@@ -81,17 +90,8 @@ export function Item({ cfg, onChanged }) {
         setTouched({ ...touched, [name]: true });
     }
 
-    const parents = cfg.fields.filter((f) => cfg.fields.some((x) => x.name.startsWith(`${f.name}.`)));
-    const isActive = (f) => fieldState(f, values).raw !== '';
-    const isBlocked = (f) => {
-        const dot = f.name.indexOf('.');
-        if (dot > 0) {
-            const parent = parents.find((x) => x.name === f.name.slice(0, dot));
-            return !!parent && isActive(parent);
-        }
-        return parents.includes(f) && cfg.fields.some((x) => x.name.startsWith(`${f.name}.`) && isActive(x));
-    };
     const idError = valueError(ID_FIELD, id, idAttempted);
+    const today = todayText();
 
     return (
         <section className="my-4 min-w-0 space-y-3 rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-5">
@@ -118,10 +118,10 @@ export function Item({ cfg, onChanged }) {
                 </span>
             </div>
             {cfg.fields.map((f) => {
-                const { raw } = fieldState(f, values);
-                const disabled = isBlocked(f);
+                const raw = rawValue(f, values);
+                const disabled = fieldDisabled(cfg.fields, f, values);
                 const blocked = disabled || bodyFieldBlocked(cfg.fields, f, values, touched);
-                const required = f.required && !blocked && (createAttempted || touched[f.name]);
+                const required = f.required && !blocked && (createAttempted || touched[f.name] || groupTouched(cfg.fields, f, values, touched));
                 const error = !blocked && (raw !== '' || required) ? valueError(f, raw, required) : null;
                 return (
                     <div key={f.name} className="grid grid-cols-[minmax(0,1fr)] items-start gap-2 sm:grid-cols-[15rem_minmax(0,24rem)]">
@@ -135,21 +135,24 @@ export function Item({ cfg, onChanged }) {
                                     required={f.required}
                                     invalid={!!error}
                                     aria-describedby={error ? `${idPrefix}-${f.name}-error` : undefined}
+                                    placeholder={f.placeholder ?? 'Выберите значение'}
                                     value={raw}
                                     onValueChange={(value) => setValue(f.name, value)}
                                     options={[
-                                        { value: '', label: '-' },
-                                        ...f.values.map((value) => ({ value, label: value })),
+                                        ...(f.required || f.presence ? [] : [{ value: 'null', label: 'Не выбрано' }]),
+                                        ...f.values,
                                     ]}
                                 />
                             ) : (
                                 <Input
                                     className="w-full"
                                     id={`${idPrefix}-${f.name}`}
+                                    type={f.format === 'date' ? 'date' : 'text'}
                                     disabled={disabled}
                                     required={f.required}
                                     invalid={!!error}
                                     aria-describedby={error ? `${idPrefix}-${f.name}-error` : undefined}
+                                    max={f.notAfterToday ? today : undefined}
                                     placeholder={f.placeholder}
                                     value={raw}
                                     onChange={(e) => setValue(f.name, e.target.value)}
