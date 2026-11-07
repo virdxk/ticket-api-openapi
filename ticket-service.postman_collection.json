@@ -1,0 +1,440 @@
+{
+  "info": {
+    "name": "Ticket Service — Гелиос",
+    "description": "Сначала выполните создание билета. ticketId сохранится автоматически. Затем запускайте нужные запросы по отдельности. Статус в названии указан для текущей версии сервиса. Удаление по типу затрагивает любой VIP-билет из общей коллекции.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://se.ifmo.ru/~s412939/ticket-service",
+      "type": "string"
+    },
+    {
+      "key": "ticketId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "201 — создать билет и сохранить ticketId для следующих запросов",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Билет для проверки API\",\n  \"coordinates\": {\"x\": 12.5, \"y\": 100},\n  \"price\": 2500,\n  \"comment\": \"Первый ряд\",\n  \"type\": \"USUAL\",\n  \"venue\": {\n    \"name\": \"Главный стадион\",\n    \"capacity\": 50000,\n    \"type\": \"STADIUM\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set(\"ticketId\", pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "200 — получить созданный билет",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets"
+      },
+      "response": []
+    },
+    {
+      "name": "200 — страница с повторяющимися фильтрами и сортировками",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?page=1&size=5&filter=price%3E%3D100&filter=name~%D0%91%D0%B8%D0%BB%D0%B5%D1%82&sort=price,desc&sort=name,asc"
+      },
+      "response": []
+    },
+    {
+      "name": "200 — противоречивые фильтры возвращают пустую страницу",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?filter=price%3E100&filter=price%3C50"
+      },
+      "response": []
+    },
+    {
+      "name": "200 — обновить только цену, остальные поля сохраняются",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/merge-patch+json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": 3000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "200 — явный null очищает цену и площадку",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/merge-patch+json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": null,\n  \"venue\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "200 — найти билеты без цены",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?filter=price%3Dnull&sort=id,desc"
+      },
+      "response": []
+    },
+    {
+      "name": "200 — верхняя допустимая граница coordinates.y равна 747",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/merge-patch+json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"coordinates\": {\"x\": 12.5, \"y\": 747}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "422 — coordinates.y равно 748, остальные поля корректны",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Проверка ограничения координаты Y\",\n  \"coordinates\": {\"x\": 12.5, \"y\": 748},\n  \"comment\": \"Y должно быть не больше 747\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "422 — comment содержит 682 символа, максимум 681",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Проверка длины комментария\",\n  \"coordinates\": {\n    \"x\": 12.5,\n    \"y\": 100\n  },\n  \"comment\": \"аааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааааа\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "422 — несколько нарушений модели, в details только первая ошибка",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"\",\n  \"coordinates\": {\"x\": 12.5, \"y\": 748},\n  \"price\": -10,\n  \"comment\": \"Проверка валидации\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "422 — пустой PATCH, ошибка из сервиса",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/merge-patch+json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "400 — неизвестное поле JSON, handleUnreadableBody",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Билет\",\n  \"coordinates\": {\"x\": 1, \"y\": 1},\n  \"comment\": \"Проверка неизвестного поля\",\n  \"unknownField\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "400 — сломанный JSON, тот же handleUnreadableBody",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "400 — строка вместо числового идентификатора, handleWrongParameter",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets/abc"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — недопустимый enum в пути, handleWrongParameter",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/tickets/actions/by-type/UNKNOWN"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — страница начинается с 1, handleInvalidParameter",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?page=0"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — размер страницы ограничен 100, handleInvalidParameter",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?size=101"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — неизвестное поле фильтра",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?filter=cost%3E100"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — число не удалось преобразовать, handleApi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?filter=price%3Eabc"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — неверная дата в фильтре, handleApi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?filter=creationDate%3D2026-99-99"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — неверный enum в фильтре, handleApi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?filter=type%3DUNKNOWN"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — одно поле сортировки указано дважды, handleApi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?sort=price,asc&sort=price,desc"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — неверное направление сортировки",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets?sort=price,wrong"
+      },
+      "response": []
+    },
+    {
+      "name": "400 — PUT не поддерживается, handleOther с ErrorResponse",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "204 — удалить созданный билет",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}"
+      },
+      "response": []
+    },
+    {
+      "name": "404 — получить уже удалённый билет, handleApi",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tickets/{{ticketId}}"
+      },
+      "response": []
+    },
+    {
+      "name": "204 или 404 — специальная операция удаляет любой VIP из общей коллекции",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/tickets/actions/by-type/VIP"
+      },
+      "response": []
+    }
+  ]
+}
