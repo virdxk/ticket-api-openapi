@@ -1,48 +1,44 @@
 package ru.itmo.soa.common.error;
 
+import lombok.Getter;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
-
+import java.io.Serial;
 import java.util.Arrays;
-import java.util.List;
 
+@Getter
 public class ApiException extends RuntimeException {
 
+    @Serial
     private static final long serialVersionUID = 1L;
-
-    public record Violation(String field, MessageSourceResolvable message) {
-
-        public static Violation of(String field, String code, Object... args) {
-            return new Violation(field, ApiException.message(code, args));
-        }
-
-        public static Violation text(String field, String text) {
-            return new Violation(field, new DefaultMessageSourceResolvable(null, null, text));
-        }
-    }
 
     private final HttpStatus status;
     private final MessageSourceResolvable error;
-    private final List<Violation> details;
+    private final String field;
 
     public ApiException(HttpStatus status, String code, Object... args) {
-        this(status, List.of(), code, args);
+        this(status, null, null, code, args);
     }
 
     public ApiException(HttpStatus status, Throwable cause, String code, Object... args) {
-        this(status, List.of(), cause, code, args);
+        this(status, cause, null, code, args);
     }
 
-    private ApiException(HttpStatus status, List<Violation> details, String code, Object... args) {
-        this(status, details, null, code, args);
-    }
-
-    private ApiException(HttpStatus status, List<Violation> details, Throwable cause, String code, Object... args) {
+    private ApiException(
+            HttpStatus status,
+            Throwable cause,
+            String field,
+            String code,
+            Object... args
+    ) {
         super(code, cause);
         this.status = status;
-        this.error = message(code, args);
-        this.details = details;
+        this.error = new DefaultMessageSourceResolvable(
+                new String[]{code},
+                Arrays.stream(args).map(String::valueOf).toArray()
+        );
+        this.field = field;
     }
 
     public static ApiException badRequest(String code, Object... args) {
@@ -53,23 +49,7 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.NOT_FOUND, code, args);
     }
 
-    public static ApiException invalid(List<Violation> details) {
-        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, details, "error.body.invalid");
-    }
-
-    static MessageSourceResolvable message(String code, Object... args) {
-        return new DefaultMessageSourceResolvable(new String[]{code}, Arrays.stream(args).map(String::valueOf).toArray());
-    }
-
-    public HttpStatus getStatus() {
-        return status;
-    }
-
-    public MessageSourceResolvable getError() {
-        return error;
-    }
-
-    public List<Violation> getDetails() {
-        return details;
+    public static ApiException invalid(String field, String code, Object... args) {
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, null, field, code, args);
     }
 }

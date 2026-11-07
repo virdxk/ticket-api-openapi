@@ -1,6 +1,8 @@
 package ru.itmo.soa.ticket.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import ru.itmo.soa.common.utils.Constants;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import ru.itmo.soa.ticket.api.TicketOperationsApi;
@@ -11,23 +13,19 @@ import ru.itmo.soa.ticket.api.model.TicketPage;
 import ru.itmo.soa.ticket.api.model.TicketPatch;
 import ru.itmo.soa.ticket.api.model.TicketType;
 import ru.itmo.soa.ticket.service.TicketService;
-
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class TicketController implements TicketsApi, TicketOperationsApi {
 
     private final TicketService service;
-
-    public TicketController(TicketService service) {
-        this.service = service;
-    }
 
     @Override
     public ResponseEntity<Ticket> createTicket(TicketCreate body) {
         Ticket ticket = service.create(body);
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}").buildAndExpand(ticket.getId()).toUri()).body(ticket);
+                .path(Constants.RESOURCE_ID_PATH).buildAndExpand(ticket.getId()).toUri()).body(ticket);
     }
 
     @Override

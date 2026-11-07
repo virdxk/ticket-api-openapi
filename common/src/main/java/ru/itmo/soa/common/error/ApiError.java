@@ -1,7 +1,6 @@
 package ru.itmo.soa.common.error;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;

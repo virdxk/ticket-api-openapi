@@ -4,12 +4,6 @@ set -o pipefail
 
 export JAVA_HOME=/usr/local/openjdk21
 
-#if [ ! -d "$HOME/soa/apache-tomcat-10.1.60" ]; then
-#    fetch -o "$HOME/soa/tomcat.tar.gz" \
-#        "https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.60/bin/apache-tomcat-10.1.60.tar.gz"
-#    tar -xzf "$HOME/soa/tomcat.tar.gz" -C "$HOME/soa"
-#    rm -rf "$HOME/soa/tomcat.tar.gz" "$HOME/soa/apache-tomcat-10.1.60/webapps"
-#fi
 
 export DB_URL=jdbc:postgresql://pg:5432/studs
 export DB_USER=$(whoami)

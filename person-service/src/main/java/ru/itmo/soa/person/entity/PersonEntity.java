@@ -7,7 +7,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-
 import java.time.LocalDate;
 
 @Entity
@@ -21,10 +20,10 @@ public class PersonEntity {
     @Version
     public long version;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false)
     public String firstName;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false)
     public String lastName;
 
     @Column(nullable = false)

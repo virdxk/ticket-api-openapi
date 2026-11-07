@@ -1,17 +1,16 @@
 package ru.itmo.soa.booking.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import ru.itmo.soa.booking.api.model.Booking;
 import ru.itmo.soa.booking.api.model.BookingCreate;
 import ru.itmo.soa.booking.api.model.BookingPage;
 import ru.itmo.soa.booking.api.model.BookingPatch;
-import ru.itmo.soa.booking.api.model.CancellationResult;
 import ru.itmo.soa.booking.client.RemoteServices;
 import ru.itmo.soa.booking.client.ticket.model.Coordinates;
 import ru.itmo.soa.booking.client.ticket.model.Ticket;
@@ -20,31 +19,24 @@ import ru.itmo.soa.booking.client.ticket.model.TicketType;
 import ru.itmo.soa.booking.client.ticket.model.VenueInput;
 import ru.itmo.soa.booking.entity.BookingEntity;
 import ru.itmo.soa.booking.repository.BookingRepository;
+import ru.itmo.soa.booking.utils.Constants;
 import ru.itmo.soa.common.error.ApiException;
-import ru.itmo.soa.common.repository.PageQuery;
-
+import ru.itmo.soa.common.query.QueryParameters;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import static ru.itmo.soa.common.utils.Constants.ERROR_BODY_EMPTY;
 
 @Service
+@RequiredArgsConstructor
 public class BookingService {
 
-    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
-
     private final BookingRepository repository;
-    private final PageQuery pageQuery;
+    private final EntityManager entityManager;
     private final RemoteServices remote;
     private final TransactionTemplate tx;
-
-    public BookingService(BookingRepository repository, PageQuery pageQuery, RemoteServices remote,
-                          PlatformTransactionManager transactionManager) {
-        this.repository = repository;
-        this.pageQuery = pageQuery;
-        this.remote = remote;
-        this.tx = new TransactionTemplate(transactionManager);
-    }
 
     public Booking create(BookingCreate body) {
         remote.getTicket(body.getTicketId());
@@ -54,9 +46,43 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public BookingPage list(Integer page, Integer size, List<String> sort, List<String> filter) {
-        PageQuery.Result<BookingEntity> result = pageQuery.find(BookingEntity.class, page, size, sort, filter);
-        return new BookingPage(result.items().stream().map(BookingService::toDto).toList(),
-                page, size, result.totalElements(), result.totalPages());
+        Map<String, Object> parameters = new HashMap<>();
+        String where = QueryParameters.whereClause(
+                BookingEntity.class,
+                filter,
+                field -> "e." + field,
+                parameters
+        );
+        String orderBy = QueryParameters.orderBy(BookingEntity.class, sort, field -> "e." + field);
+
+        TypedQuery<Long> countQuery = entityManager.createQuery(
+                """
+                select count(e)
+                from BookingEntity e
+                """ + where,
+                Long.class
+        );
+        parameters.forEach(countQuery::setParameter);
+        long total = countQuery.getSingleResult();
+        long offset = (long) (page - 1) * size;
+        List<Booking> items = List.of();
+        if (offset < total) {
+            TypedQuery<BookingEntity> query = entityManager.createQuery(
+                    """
+                    select e
+                    from BookingEntity e
+                    """ + where + " order by " + orderBy,
+                    BookingEntity.class
+            );
+            parameters.forEach(query::setParameter);
+            items = query.setFirstResult((int) offset)
+                    .setMaxResults(size)
+                    .getResultList()
+                    .stream()
+                    .map(BookingService::toDto)
+                    .toList();
+        }
+        return new BookingPage(items, page, size, total, (int) ((total + size - 1) / size));
     }
 
     @Transactional(readOnly = true)
@@ -66,10 +92,10 @@ public class BookingService {
 
     public Booking update(Long id, BookingPatch patch) {
         if (patch.getTicketId() == null && patch.getPersonId() == null) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "error.body.empty");
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, ERROR_BODY_EMPTY);
         }
         if (!repository.existsById(id)) {
-            throw ApiException.notFound("booking.notFound", id);
+            throw ApiException.notFound(Constants.BOOKING_NOT_FOUND, id);
         }
         if (patch.getTicketId() != null) {
             remote.getTicket(patch.getTicketId());
@@ -98,10 +124,10 @@ public class BookingService {
         remote.checkPerson(personId);
         Ticket source = remote.getTicket(ticketId);
         if (source.getPrice() == null) {
-            throw new ApiException(HttpStatus.CONFLICT, "ticket.noPrice", ticketId);
+            throw new ApiException(HttpStatus.CONFLICT, Constants.TICKET_NO_PRICE, ticketId);
         }
         if (!Float.isFinite(source.getPrice() * 2)) {
-            throw new ApiException(HttpStatus.CONFLICT, "ticket.priceOverflow", ticketId);
+            throw new ApiException(HttpStatus.CONFLICT, Constants.TICKET_PRICE_OVERFLOW, ticketId);
         }
         TicketCreate copy = new TicketCreate()
                 .name(source.getName())
@@ -120,29 +146,28 @@ public class BookingService {
             try {
                 remote.deleteTicket(copyId);
             } catch (RuntimeException compensation) {
-                log.error("VIP sale compensation failed: copied ticket {} (source ticket {}, person {}) was not deleted",
-                        copyId, ticketId, personId, compensation);
+                e.addSuppressed(compensation);
             }
             throw e;
         }
     }
 
     @Transactional
-    public CancellationResult cancel(Long personId) {
-        return new CancellationResult(personId, repository.deleteByPersonId(personId));
+    public int cancel(Long personId) {
+        return repository.deleteByPersonId(personId);
     }
 
     private Booking save(Long ticketId, Long personId) {
         BookingEntity e = new BookingEntity();
         e.ticketId = ticketId;
         e.personId = personId;
-        e.createdAt = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
+        e.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         return toDto(repository.save(e));
     }
 
     private BookingEntity find(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> ApiException.notFound("booking.notFound", id));
+                .orElseThrow(() -> ApiException.notFound(Constants.BOOKING_NOT_FOUND, id));
     }
 
     private static Booking toDto(BookingEntity e) {

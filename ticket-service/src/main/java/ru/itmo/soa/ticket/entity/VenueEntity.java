@@ -22,7 +22,7 @@ public class VenueEntity {
     @Version
     public long version;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false)
     public String name;
 
     @Column(nullable = false)

@@ -1,6 +1,8 @@
 package ru.itmo.soa.person.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import ru.itmo.soa.common.utils.Constants;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import ru.itmo.soa.person.api.PersonsApi;
@@ -9,23 +11,19 @@ import ru.itmo.soa.person.api.model.PersonCreate;
 import ru.itmo.soa.person.api.model.PersonPage;
 import ru.itmo.soa.person.api.model.PersonPatch;
 import ru.itmo.soa.person.service.PersonService;
-
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class PersonController implements PersonsApi {
 
     private final PersonService service;
-
-    public PersonController(PersonService service) {
-        this.service = service;
-    }
 
     @Override
     public ResponseEntity<Person> createPerson(PersonCreate body) {
         Person person = service.create(body);
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}").buildAndExpand(person.getId()).toUri()).body(person);
+                .path(Constants.RESOURCE_ID_PATH).buildAndExpand(person.getId()).toUri()).body(person);
     }
 
     @Override

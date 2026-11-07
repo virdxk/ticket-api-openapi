@@ -1,5 +1,6 @@
 package ru.itmo.soa.booking.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -11,17 +12,14 @@ import ru.itmo.soa.booking.api.model.BookingPage;
 import ru.itmo.soa.booking.api.model.BookingPatch;
 import ru.itmo.soa.booking.api.model.CancellationResult;
 import ru.itmo.soa.booking.service.BookingService;
-
+import ru.itmo.soa.booking.utils.Constants;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class BookingController implements BookingsApi, BookingApi {
 
     private final BookingService service;
-
-    public BookingController(BookingService service) {
-        this.service = service;
-    }
 
     @Override
     public ResponseEntity<Booking> createBooking(BookingCreate body) {
@@ -56,11 +54,12 @@ public class BookingController implements BookingsApi, BookingApi {
 
     @Override
     public ResponseEntity<CancellationResult> cancelPersonBookings(Long personId) {
-        return ResponseEntity.ok(service.cancel(personId));
+        int cancelledBookings = service.cancel(personId);
+        return ResponseEntity.ok(new CancellationResult(personId, cancelledBookings));
     }
 
     private static ResponseEntity<Booking> created(Booking booking) {
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/booking/bookings/{id}").buildAndExpand(booking.getId()).toUri()).body(booking);
+                .path(Constants.BOOKING_LOCATION_PATH).buildAndExpand(booking.getId()).toUri()).body(booking);
     }
 }

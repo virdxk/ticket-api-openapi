@@ -15,7 +15,6 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import ru.itmo.soa.ticket.api.model.TicketType;
-
 import java.time.OffsetDateTime;
 
 @Entity
@@ -29,7 +28,7 @@ public class TicketEntity {
     @Version
     public long version;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false)
     public String name;
 
     @Embedded
