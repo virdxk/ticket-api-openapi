@@ -58,7 +58,7 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/tickets"
+        "url": "{{baseUrl}}/tickets/{{ticketId}}"
       },
       "response": []
     },
@@ -90,7 +90,7 @@
             "value": "application/merge-patch+json"
           }
         ],
-        "url": "{{baseUrl}}/tickets/",
+        "url": "{{baseUrl}}/tickets/{{ticketId}}",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"price\": 3000\n}",
@@ -205,7 +205,7 @@
       "response": []
     },
     {
-      "name": "422 — несколько нарушений модели, в details только первая ошибка",
+      "name": "422 — несколько нарушений модели",
       "request": {
         "method": "POST",
         "header": [
