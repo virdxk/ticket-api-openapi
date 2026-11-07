@@ -2,18 +2,18 @@ import JSONbig from 'json-bigint';
 
 const json = JSONbig({ storeAsString: true });
 
-export async function request(method, url, body, contentType = 'application/json', signal) {
+export async function request(method, url, body = undefined, contentType = 'application/json', signal) {
     try {
         const res = await fetch(url, {
             method,
             signal,
-            headers: body === undefined ? {} : { 'Content-Type': contentType },
+            headers: body === undefined ? undefined : { 'Content-Type': contentType },
             body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
         });
         const text = await res.text();
         let data = null;
         try {
-            data = text ? json.parse(text) : null;
+            data = text ? json.parse(text, undefined) : null;
         } catch {
             data = text;
         }

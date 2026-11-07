@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 
+/*noinspection CssInvalidAtRule*/
 @theme {
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --color-accent: #262626;
@@ -12,6 +13,7 @@
 
 @layer base {
     body {
+        /*noinspection CssInvalidAtRule*/
         @apply m-0 bg-canvas font-sans text-sm leading-6 text-ink antialiased;
         font-optical-sizing: auto;
     }
