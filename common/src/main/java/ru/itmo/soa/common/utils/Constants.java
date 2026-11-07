@@ -6,7 +6,6 @@ public final class Constants {
 
     public static final String RESOURCE_ID_PATH = "/{id}";
     public static final String ERROR_INTERNAL = "error.internal";
-    public static final String ERROR_CONFLICT = "error.conflict";
     public static final String ERROR_BODY_INVALID = "error.body.invalid";
     public static final String ERROR_BODY_EMPTY = "error.body.empty";
     public static final String ERROR_FIELD_UNKNOWN = "error.field.unknown";

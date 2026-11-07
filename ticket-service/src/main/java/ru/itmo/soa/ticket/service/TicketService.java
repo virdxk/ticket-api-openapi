@@ -33,6 +33,7 @@ public class TicketService {
 
     private final TicketRepository repository;
     private final EntityManager entityManager;
+    private final QueryParameters queryParameters = new QueryParameters();
 
     @Transactional
     public Ticket create(TicketCreate body) {
@@ -50,13 +51,13 @@ public class TicketService {
     @Transactional(readOnly = true)
     public TicketPage list(Integer page, Integer size, List<String> sort, List<String> filter) {
         Map<String, Object> parameters = new HashMap<>();
-        String where = QueryParameters.whereClause(
+        String where = queryParameters.whereClause(
                 TicketEntity.class,
                 filter,
-                TicketService::queryField,
+                this::queryField,
                 parameters
         );
-        String orderBy = QueryParameters.orderBy(TicketEntity.class, sort, TicketService::queryField);
+        String orderBy = queryParameters.orderBy(TicketEntity.class, sort, this::queryField);
 
         TypedQuery<Long> countQuery = entityManager.createQuery(
                 """
@@ -84,7 +85,7 @@ public class TicketService {
                     .setMaxResults(size)
                     .getResultList()
                     .stream()
-                    .map(TicketService::toDto)
+                    .map(this::toDto)
                     .toList();
         }
         return new TicketPage(items, page, size, total, (int) ((total + size - 1) / size));
@@ -122,7 +123,7 @@ public class TicketService {
                 .orElseThrow(() -> ApiException.notFound(Constants.TICKET_NOT_FOUND_BY_TYPE, type)));
     }
 
-    private static String queryField(String field) {
+    private String queryField(String field) {
         return field.startsWith("venue.") ? field : "e." + field;
     }
 
@@ -130,14 +131,14 @@ public class TicketService {
         return repository.findById(id).orElseThrow(() -> ApiException.notFound(Constants.TICKET_NOT_FOUND, id));
     }
 
-    private static TicketEntity.Coordinates coordinates(Coordinates dto) {
+    private TicketEntity.Coordinates coordinates(Coordinates dto) {
         TicketEntity.Coordinates c = new TicketEntity.Coordinates();
         c.x = dto.getX();
         c.y = dto.getY();
         return c;
     }
 
-    private static VenueEntity venue(VenueInput dto) {
+    private VenueEntity venue(VenueInput dto) {
         if (dto == null) {
             return null;
         }
@@ -148,7 +149,7 @@ public class TicketService {
         return v;
     }
 
-    private static Ticket toDto(TicketEntity e) {
+    private Ticket toDto(TicketEntity e) {
         Ticket t = new Ticket(e.id, e.name, new Coordinates(e.coordinates.x, e.coordinates.y),
                 e.creationDate.withOffsetSameInstant(ZoneOffset.UTC), e.comment);
         t.price(e.price).type(e.type);

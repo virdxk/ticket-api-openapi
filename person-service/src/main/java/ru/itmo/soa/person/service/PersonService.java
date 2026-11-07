@@ -28,6 +28,7 @@ public class PersonService {
 
     private final PersonRepository repository;
     private final EntityManager entityManager;
+    private final QueryParameters queryParameters = new QueryParameters();
 
     @Transactional
     public Person create(PersonCreate body) {
@@ -42,13 +43,13 @@ public class PersonService {
     @Transactional(readOnly = true)
     public PersonPage list(Integer page, Integer size, List<String> sort, List<String> filter) {
         Map<String, Object> parameters = new HashMap<>();
-        String where = QueryParameters.whereClause(
+        String where = queryParameters.whereClause(
                 PersonEntity.class,
                 filter,
                 field -> "e." + field,
                 parameters
         );
-        String orderBy = QueryParameters.orderBy(PersonEntity.class, sort, field -> "e." + field);
+        String orderBy = queryParameters.orderBy(PersonEntity.class, sort, field -> "e." + field);
 
         TypedQuery<Long> countQuery = entityManager.createQuery(
                 """
@@ -74,7 +75,7 @@ public class PersonService {
                     .setMaxResults(size)
                     .getResultList()
                     .stream()
-                    .map(PersonService::toDto)
+                    .map(this::toDto)
                     .toList();
         }
         return new PersonPage(items, page, size, total, (int) ((total + size - 1) / size));
@@ -107,13 +108,13 @@ public class PersonService {
         return repository.findById(id).orElseThrow(() -> ApiException.notFound(Constants.PERSON_NOT_FOUND, id));
     }
 
-    private static void checkBirthday(LocalDate birthday) {
+    private void checkBirthday(LocalDate birthday) {
         if (birthday.isAfter(LocalDate.now(ZoneOffset.UTC))) {
             throw ApiException.invalid("birthday", Constants.PERSON_BIRTHDAY_FUTURE);
         }
     }
 
-    private static Person toDto(PersonEntity e) {
+    private Person toDto(PersonEntity e) {
         return new Person(e.id, e.firstName, e.lastName, e.birthday);
     }
 }

@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import ru.itmo.soa.ticket.api.model.TicketType;
 import java.time.OffsetDateTime;
 
@@ -24,9 +23,6 @@ public class TicketEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
-    @Version
-    public long version;
 
     @Column(nullable = false)
     public String name;

@@ -35,6 +35,7 @@ public class BookingService {
 
     private final BookingRepository repository;
     private final EntityManager entityManager;
+    private final QueryParameters queryParameters = new QueryParameters();
     private final RemoteServices remote;
     private final TransactionTemplate tx;
 
@@ -47,13 +48,13 @@ public class BookingService {
     @Transactional(readOnly = true)
     public BookingPage list(Integer page, Integer size, List<String> sort, List<String> filter) {
         Map<String, Object> parameters = new HashMap<>();
-        String where = QueryParameters.whereClause(
+        String where = queryParameters.whereClause(
                 BookingEntity.class,
                 filter,
                 field -> "e." + field,
                 parameters
         );
-        String orderBy = QueryParameters.orderBy(BookingEntity.class, sort, field -> "e." + field);
+        String orderBy = queryParameters.orderBy(BookingEntity.class, sort, field -> "e." + field);
 
         TypedQuery<Long> countQuery = entityManager.createQuery(
                 """
@@ -79,7 +80,7 @@ public class BookingService {
                     .setMaxResults(size)
                     .getResultList()
                     .stream()
-                    .map(BookingService::toDto)
+                    .map(this::toDto)
                     .toList();
         }
         return new BookingPage(items, page, size, total, (int) ((total + size - 1) / size));
@@ -170,7 +171,7 @@ public class BookingService {
                 .orElseThrow(() -> ApiException.notFound(Constants.BOOKING_NOT_FOUND, id));
     }
 
-    private static Booking toDto(BookingEntity e) {
+    private Booking toDto(BookingEntity e) {
         return new Booking(e.id, e.ticketId, e.personId, e.createdAt.withOffsetSameInstant(ZoneOffset.UTC));
     }
 }

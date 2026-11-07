@@ -1,12 +1,10 @@
 package ru.itmo.soa.common.error;
 
 import lombok.RequiredArgsConstructor;
-import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -62,15 +60,14 @@ public class ApiExceptionHandler {
         return handleApi(ApiException.badRequest(Constants.ERROR_PARAM_VALUE, ex.getName(), ex.getValue()));
     }
 
-    @ExceptionHandler({OptimisticLockException.class, OptimisticLockingFailureException.class})
-    public ResponseEntity<ApiError> handleConflict(RuntimeException ex) {
-        return handleApi(new ApiException(HttpStatus.CONFLICT, ex, Constants.ERROR_CONFLICT));
-    }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleOther(Exception ex) {
         if (ex instanceof ErrorResponse response) {
             HttpStatusCode status = response.getStatusCode();
+            if (status.value() == HttpStatus.METHOD_NOT_ALLOWED.value()
+                    || status.value() == HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()) {
+                status = HttpStatus.BAD_REQUEST;
+            }
             String message = messages.getMessage(
                     Constants.ERROR_HTTP_PREFIX + status.value(),
                     null,

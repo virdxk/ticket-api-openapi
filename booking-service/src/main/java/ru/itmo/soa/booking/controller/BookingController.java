@@ -58,7 +58,7 @@ public class BookingController implements BookingsApi, BookingApi {
         return ResponseEntity.ok(new CancellationResult(personId, cancelledBookings));
     }
 
-    private static ResponseEntity<Booking> created(Booking booking) {
+    private ResponseEntity<Booking> created(Booking booking) {
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path(Constants.BOOKING_LOCATION_PATH).buildAndExpand(booking.getId()).toUri()).body(booking);
     }
